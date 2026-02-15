@@ -76,3 +76,21 @@ export interface AutomationAction {
   action: string;
   params: Record<string, any>;
 }
+
+export interface OpenClawAgentResult {
+  action: 'replied' | 'triaged' | 'escalated' | 'resolved' | 'needs_human';
+  confidence: number;
+  summary: string;
+  toolCalls: Array<{ tool: string; args: any; result: any }>;
+  draftReply?: string;
+}
+
+export interface OpenClawSettings {
+  openclawEnabled: boolean;
+  openclawAgentMode: 'copilot' | 'autonomous' | 'off';
+  openclawWidgetAgent: boolean;
+  openclawWidgetResolve: boolean;
+  openclawAutoTriage: boolean;
+  openclawModel?: string;
+  openclawConfidenceThreshold: number;
+}

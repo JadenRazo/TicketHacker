@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useUIStore } from '../store/ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTenant, updateTenant } from '../lib/api';
+import { getTenant, updateTenant, getOpenClawStatus } from '../lib/api';
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
@@ -20,10 +20,17 @@ export default function SettingsPage() {
     accent: '',
   });
 
+  const { data: openclawStatus } = useQuery({
+    queryKey: ['openclaw-status'],
+    queryFn: getOpenClawStatus,
+    retry: false,
+  });
+
   const updateTenantMutation = useMutation({
-    mutationFn: (data: { settings: { branding: Record<string, any> } }) => updateTenant(data),
+    mutationFn: (data: { settings: Record<string, any> }) => updateTenant(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant'] });
+      queryClient.invalidateQueries({ queryKey: ['openclaw-status'] });
     },
   });
 
@@ -176,6 +183,181 @@ export default function SettingsPage() {
               >
                 Toggle
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Agent Section */}
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            AI Agent (OpenClaw)
+          </h2>
+
+          <div className="mb-4 flex items-center gap-2">
+            <div
+              className={`w-2.5 h-2.5 rounded-full ${
+                openclawStatus?.connected
+                  ? 'bg-green-500'
+                  : 'bg-red-500'
+              }`}
+            />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {openclawStatus?.connected ? 'Connected' : 'Disconnected'}
+              {openclawStatus?.error && ` - ${openclawStatus.error}`}
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                  Enable AI Agent
+                </label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Turn on AI-powered ticket handling
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  updateTenantMutation.mutate({
+                    settings: {
+                      ...tenant?.settings,
+                      openclawEnabled: !tenant?.settings?.openclawEnabled,
+                    },
+                  })
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  tenant?.settings?.openclawEnabled
+                    ? 'bg-blue-600'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    tenant?.settings?.openclawEnabled
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Agent Mode
+              </label>
+              <select
+                value={tenant?.settings?.openclawAgentMode || 'copilot'}
+                onChange={(e) =>
+                  updateTenantMutation.mutate({
+                    settings: {
+                      ...tenant?.settings,
+                      openclawAgentMode: e.target.value,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+              >
+                <option value="copilot">Copilot (drafts for review)</option>
+                <option value="autonomous">Autonomous (acts independently)</option>
+                <option value="off">Off</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Copilot mode drafts replies for agent review. Autonomous mode sends replies directly.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                  Widget AI Agent
+                </label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  AI responds to widget chat messages
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  updateTenantMutation.mutate({
+                    settings: {
+                      ...tenant?.settings,
+                      openclawWidgetAgent: !tenant?.settings?.openclawWidgetAgent,
+                    },
+                  })
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  tenant?.settings?.openclawWidgetAgent
+                    ? 'bg-blue-600'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    tenant?.settings?.openclawWidgetAgent
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                  Auto-Triage
+                </label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Automatically triage new tickets with AI
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  updateTenantMutation.mutate({
+                    settings: {
+                      ...tenant?.settings,
+                      openclawAutoTriage: !tenant?.settings?.openclawAutoTriage,
+                    },
+                  })
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  tenant?.settings?.openclawAutoTriage
+                    ? 'bg-blue-600'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    tenant?.settings?.openclawAutoTriage
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confidence Threshold: {((tenant?.settings?.openclawConfidenceThreshold || 0.8) * 100).toFixed(0)}%
+              </label>
+              <input
+                type="range"
+                min="0.5"
+                max="1"
+                step="0.05"
+                value={tenant?.settings?.openclawConfidenceThreshold || 0.8}
+                onChange={(e) =>
+                  updateTenantMutation.mutate({
+                    settings: {
+                      ...tenant?.settings,
+                      openclawConfidenceThreshold: parseFloat(e.target.value),
+                    },
+                  })
+                }
+                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Minimum confidence required for the AI to take autonomous action
+              </p>
             </div>
           </div>
         </div>

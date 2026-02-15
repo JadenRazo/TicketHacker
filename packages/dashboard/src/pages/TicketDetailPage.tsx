@@ -13,8 +13,13 @@ import {
   snoozeTicket,
   mergeTickets,
   getTickets,
+  aiTriageTicket,
+  aiDraftReply,
+  aiResolveTicket,
+  aiSummarizeTicket,
   type Ticket,
   type Message,
+  type AgentResult,
 } from '../lib/api';
 import { useTicketRoom, emitTyping } from '../lib/socket';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -55,6 +60,8 @@ export default function TicketDetailPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [newTag, setNewTag] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
+  const [aiResult, setAiResult] = useState<AgentResult | null>(null);
+  const [showAiPanel, setShowAiPanel] = useState(false);
 
   const {
     data: ticket,
@@ -179,6 +186,66 @@ export default function TicketDetailPage() {
       showToast(error.message || 'Failed to execute macro', 'error');
     },
   });
+
+  const aiTriageMutation = useMutation({
+    mutationFn: () => aiTriageTicket(id!),
+    onSuccess: (data) => {
+      setAiResult(data.result);
+      setShowAiPanel(true);
+      queryClient.invalidateQueries({ queryKey: ['ticket', id] });
+      showToast('AI triage completed', 'success');
+    },
+    onError: (error: Error) => {
+      showToast(error.message || 'AI triage failed', 'error');
+    },
+  });
+
+  const aiReplyMutation = useMutation({
+    mutationFn: () => aiDraftReply(id!),
+    onSuccess: (data) => {
+      setAiResult(data.result);
+      setShowAiPanel(true);
+      if (data.result.draftReply && editor) {
+        editor.commands.setContent(data.result.draftReply);
+      }
+      showToast('AI draft reply generated', 'success');
+    },
+    onError: (error: Error) => {
+      showToast(error.message || 'AI draft reply failed', 'error');
+    },
+  });
+
+  const aiResolveMutation = useMutation({
+    mutationFn: () => aiResolveTicket(id!),
+    onSuccess: (data) => {
+      setAiResult(data.result);
+      setShowAiPanel(true);
+      queryClient.invalidateQueries({ queryKey: ['ticket', id] });
+      queryClient.invalidateQueries({ queryKey: ['messages', id] });
+      showToast(`AI resolve: ${data.result.action}`, 'success');
+    },
+    onError: (error: Error) => {
+      showToast(error.message || 'AI resolve failed', 'error');
+    },
+  });
+
+  const aiSummarizeMutation = useMutation({
+    mutationFn: () => aiSummarizeTicket(id!),
+    onSuccess: (data) => {
+      setAiResult(data.result);
+      setShowAiPanel(true);
+      showToast('AI summary generated', 'success');
+    },
+    onError: (error: Error) => {
+      showToast(error.message || 'AI summarize failed', 'error');
+    },
+  });
+
+  const isAiLoading =
+    aiTriageMutation.isPending ||
+    aiReplyMutation.isPending ||
+    aiResolveMutation.isPending ||
+    aiSummarizeMutation.isPending;
 
   const editor = useEditor({
     extensions: [
@@ -839,6 +906,99 @@ export default function TicketDetailPage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              AI Actions
+            </h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => aiTriageMutation.mutate()}
+                disabled={isAiLoading}
+                className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-md transition-colors disabled:opacity-50"
+              >
+                {aiTriageMutation.isPending ? 'Triaging...' : 'AI Triage'}
+              </button>
+              <button
+                onClick={() => aiReplyMutation.mutate()}
+                disabled={isAiLoading}
+                className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-md transition-colors disabled:opacity-50"
+              >
+                {aiReplyMutation.isPending ? 'Drafting...' : 'AI Draft Reply'}
+              </button>
+              <button
+                onClick={() => aiResolveMutation.mutate()}
+                disabled={isAiLoading}
+                className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-md transition-colors disabled:opacity-50"
+              >
+                {aiResolveMutation.isPending ? 'Resolving...' : 'AI Resolve'}
+              </button>
+              <button
+                onClick={() => aiSummarizeMutation.mutate()}
+                disabled={isAiLoading}
+                className="w-full px-3 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-md transition-colors disabled:opacity-50"
+              >
+                {aiSummarizeMutation.isPending ? 'Summarizing...' : 'AI Summarize'}
+              </button>
+            </div>
+
+            {showAiPanel && aiResult && (
+              <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-purple-700 dark:text-purple-300 uppercase">
+                    {aiResult.action}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-purple-600 dark:text-purple-400">
+                      {(aiResult.confidence * 100).toFixed(0)}% confidence
+                    </span>
+                    <button
+                      onClick={() => setShowAiPanel(false)}
+                      className="text-purple-400 hover:text-purple-600 dark:hover:text-purple-200 text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-purple-800 dark:text-purple-200">
+                  {aiResult.summary}
+                </p>
+                {aiResult.draftReply && (
+                  <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-purple-100 dark:border-purple-900">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Draft Reply
+                    </p>
+                    <p className="text-sm text-gray-800 dark:text-gray-200">
+                      {aiResult.draftReply}
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (editor && aiResult.draftReply) {
+                            editor.commands.setContent(aiResult.draftReply);
+                          }
+                        }}
+                        className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Use Reply
+                      </button>
+                      <button
+                        onClick={() => setShowAiPanel(false)}
+                        className="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {aiResult.toolCalls.length > 0 && (
+                  <p className="mt-1 text-xs text-purple-500 dark:text-purple-400">
+                    {aiResult.toolCalls.length} tool call{aiResult.toolCalls.length !== 1 ? 's' : ''} executed
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

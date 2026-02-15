@@ -440,3 +440,67 @@ export async function updateTenant(
     body: JSON.stringify(data),
   });
 }
+
+export interface OpenClawStatus {
+  connected: boolean;
+  url: string;
+  error?: string;
+  tenantConfig: {
+    openclawEnabled: boolean;
+    openclawAgentMode: string;
+    openclawWidgetAgent: boolean;
+    openclawAutoTriage: boolean;
+  };
+}
+
+export interface AgentResult {
+  action: 'replied' | 'triaged' | 'escalated' | 'resolved' | 'needs_human';
+  confidence: number;
+  summary: string;
+  toolCalls: Array<{ tool: string; args: any; result: any }>;
+  draftReply?: string;
+}
+
+export async function getOpenClawStatus(): Promise<OpenClawStatus> {
+  return fetchAPI<OpenClawStatus>('/openclaw/status');
+}
+
+export async function aiTriageTicket(
+  ticketId: string,
+  model?: string,
+): Promise<{ result: AgentResult }> {
+  return fetchAPI<{ result: AgentResult }>(`/openclaw/agent/triage/${ticketId}`, {
+    method: 'POST',
+    body: JSON.stringify({ model }),
+  });
+}
+
+export async function aiDraftReply(
+  ticketId: string,
+  model?: string,
+): Promise<{ result: AgentResult }> {
+  return fetchAPI<{ result: AgentResult }>(`/openclaw/agent/reply/${ticketId}`, {
+    method: 'POST',
+    body: JSON.stringify({ model }),
+  });
+}
+
+export async function aiResolveTicket(
+  ticketId: string,
+  model?: string,
+): Promise<{ result: AgentResult }> {
+  return fetchAPI<{ result: AgentResult }>(`/openclaw/agent/resolve/${ticketId}`, {
+    method: 'POST',
+    body: JSON.stringify({ model }),
+  });
+}
+
+export async function aiSummarizeTicket(
+  ticketId: string,
+  model?: string,
+): Promise<{ result: AgentResult }> {
+  return fetchAPI<{ result: AgentResult }>(`/openclaw/agent/summarize/${ticketId}`, {
+    method: 'POST',
+    body: JSON.stringify({ model }),
+  });
+}

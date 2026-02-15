@@ -21,6 +21,7 @@ import { AiModule } from './ai/ai.module';
 import { DiscordModule } from './discord/discord.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { MessageBusModule } from './message-bus/message-bus.module';
+import { OpenclawModule } from './openclaw/openclaw.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { MessageBusModule } from './message-bus/message-bus.module';
     DiscordModule,
     TelegramModule,
     MessageBusModule,
+    OpenclawModule,
   ],
 })
 export class AppModule {}
