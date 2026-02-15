@@ -1,0 +1,346 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Plan {
+  FREE
+  GROWTH
+  PRO
+  ENTERPRISE
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  AGENT
+  VIEWER
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum Channel {
+  CHAT_WIDGET
+  DISCORD
+  TELEGRAM
+  EMAIL
+  API
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  NOTE
+  SYSTEM
+  AI_SUGGESTION
+}
+
+enum CannedResponseScope {
+  PERSONAL
+  TEAM
+  TENANT
+}
+
+enum MacroScope {
+  PERSONAL
+  TEAM
+  TENANT
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DROPDOWN
+  DATE
+  BOOLEAN
+}
+
+// Models
+model Tenant {
+  id                       String                    @id @default(uuid())
+  name                     String
+  slug                     String                    @unique
+  plan                     Plan                      @default(FREE)
+  settings                 Json                      @default("{}")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+
+  // Relations
+  users                    User[]
+  teams                    Team[]
+  tickets                  Ticket[]
+  contacts                 Contact[]
+  messages                 Message[]
+  cannedResponses          CannedResponse[]
+  platformConnections      PlatformConnection[]
+  savedViews               SavedView[]
+  macros                   Macro[]
+  automationRules          AutomationRule[]
+  customFieldDefinitions   CustomFieldDefinition[]
+  attachments              Attachment[]
+  teamMembers              TeamMember[]
+}
+
+model User {
+  id                String          @id @default(uuid())
+  tenantId          String
+  email             String
+  name              String
+  role              Role
+  passwordHash      String
+  avatarUrl         String?
+  isActive          Boolean         @default(true)
+  lastSeenAt        DateTime?
+  preferences       Json            @default("{}")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignedTickets   Ticket[]
+  messages          Message[]
+  cannedResponses   CannedResponse[]
+  savedViews        SavedView[]
+  macros            Macro[]
+  teamMembers       TeamMember[]
+
+  @@unique([tenantId, email])
+}
+
+model Team {
+  id                String          @id @default(uuid())
+  tenantId          String
+  name              String
+  description       String?
+  createdAt         DateTime        @default(now())
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members           TeamMember[]
+  tickets           Ticket[]
+  cannedResponses   CannedResponse[]
+  macros            Macro[]
+}
+
+model TeamMember {
+  id                String          @id @default(uuid())
+  tenantId          String
+  teamId            String
+  userId            String
+  createdAt         DateTime        @default(now())
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  team              Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model Ticket {
+  id                String          @id @default(uuid())
+  tenantId          String
+  subject           String
+  status            TicketStatus    @default(OPEN)
+  priority          Priority        @default(NORMAL)
+  channel           Channel
+  assigneeId        String?
+  teamId            String?
+  contactId         String
+  metadata          Json            @default("{}")
+  tags              String[]        @default([])
+  snoozedUntil      DateTime?
+  mergedIntoId      String?
+  slaDeadline       DateTime?
+  customFields      Json            @default("{}")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignee          User?           @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  team              Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  contact           Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages          Message[]
+  mergedInto        Ticket?         @relation("TicketMerges", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedTickets     Ticket[]        @relation("TicketMerges")
+}
+
+model Contact {
+  id                   String       @id @default(uuid())
+  tenantId             String
+  externalId           String
+  name                 String?
+  email                String?
+  avatarUrl            String?
+  channel              Channel
+  metadata             Json         @default("{}")
+  satisfactionRating   Int?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  // Relations
+  tenant               Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tickets              Ticket[]
+  messages             Message[]
+
+  @@unique([tenantId, channel, externalId])
+}
+
+model Message {
+  id                String              @id @default(uuid())
+  tenantId          String
+  ticketId          String
+  senderId          String?
+  contactId         String?
+  direction         MessageDirection
+  contentText       String
+  contentHtml       String?
+  messageType       MessageType         @default(TEXT)
+  externalId        String?
+  metadata          Json                @default("{}")
+  createdAt         DateTime            @default(now())
+
+  // Relations
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket            Ticket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender            User?               @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  contact           Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  attachments       Attachment[]
+}
+
+model Attachment {
+  id                String          @id @default(uuid())
+  tenantId          String
+  messageId         String
+  filename          String
+  mimeType          String
+  sizeBytes         Int
+  url               String
+  createdAt         DateTime        @default(now())
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  message           Message         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+model CannedResponse {
+  id                String                  @id @default(uuid())
+  tenantId          String
+  title             String
+  content           String
+  shortcut          String?
+  scope             CannedResponseScope     @default(TENANT)
+  ownerId           String?
+  teamId            String?
+  usageCount        Int                     @default(0)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  // Relations
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner             User?                   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  team              Team?                   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+}
+
+model PlatformConnection {
+  id                String          @id @default(uuid())
+  tenantId          String
+  channel           Channel
+  config            Json            @default("{}")
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, channel])
+}
+
+model SavedView {
+  id                String          @id @default(uuid())
+  tenantId          String
+  userId            String
+  name              String
+  filters           Json            @default("{}")
+  sortBy            String          @default("createdAt")
+  sortOrder         String          @default("desc")
+  isDefault         Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Macro {
+  id                String          @id @default(uuid())
+  tenantId          String
+  name              String
+  description       String?
+  actions           Json            @default("[]")
+  scope             MacroScope      @default(TENANT)
+  ownerId           String?
+  teamId            String?
+  usageCount        Int             @default(0)
+  createdAt         DateTime        @default(now())
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner             User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  team              Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+}
+
+model AutomationRule {
+  id                String          @id @default(uuid())
+  tenantId          String
+  name              String
+  conditions        Json            @default("{}")
+  actions           Json            @default("{}")
+  isActive          Boolean         @default(true)
+  priority          Int             @default(0)
+  createdAt         DateTime        @default(now())
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model CustomFieldDefinition {
+  id                String              @id @default(uuid())
+  tenantId          String
+  name              String
+  fieldType         CustomFieldType
+  options           Json?
+  isRequired        Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+
+  // Relations
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
