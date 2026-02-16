@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <marker id="arrowGreen" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 L3,5Z" fill="#4ade80"/></marker>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 L3,5Z" fill="#60a5fa"/></marker>
+    <marker id="arrowAmber" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 L3,5Z" fill="#fbbf24"/></marker>
+    <marker id="arrowCyan" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 L3,5Z" fill="#22d3ee"/></marker>
+    <marker id="arrowPurple" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 L3,5Z" fill="#c084fc"/></marker>
+    <marker id="arrowRed" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><path d="M0,0 L12,5 L0,10 L3,5Z" fill="#f87171"/></marker>
+  </defs>
+
+  <rect width="1200" height="900" rx="12" fill="url(#bgGrad)"/>
+
+  <text x="600" y="42" text-anchor="middle" fill="#f0f6fc" font-size="26" font-weight="700">TicketHacker Architecture</text>
+  <text x="600" y="68" text-anchor="middle" fill="#9198a1" font-size="14">Multi-tenant helpdesk — Discord, Telegram, Email, Live Chat in one ticketing system</text>
+
+  <!-- ═══ TOP: Inbound Channels ═══ -->
+  <rect x="30" y="90" width="1140" height="110" rx="12" fill="#1c2333" stroke="#60a5fa" stroke-width="2"/>
+  <text x="600" y="118" text-anchor="middle" fill="#93c5fd" font-size="18" font-weight="700">Inbound Channels</text>
+
+  <rect x="50" y="132" width="185" height="50" rx="8" fill="#1e293b" stroke="#5865F2" stroke-width="1.2"/>
+  <text x="142" y="155" text-anchor="middle" fill="#93c5fd" font-size="13" font-weight="600">Discord Bot</text>
+  <text x="142" y="172" text-anchor="middle" fill="#9198a1" font-size="10">Panels, modals, threads</text>
+
+  <rect x="250" y="132" width="185" height="50" rx="8" fill="#1e293b" stroke="#26A5E4" stroke-width="1.2"/>
+  <text x="342" y="155" text-anchor="middle" fill="#7dd3fc" font-size="13" font-weight="600">Telegram Bot</text>
+  <text x="342" y="172" text-anchor="middle" fill="#9198a1" font-size="10">Webhook registration</text>
+
+  <rect x="450" y="132" width="185" height="50" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.2"/>
+  <text x="542" y="155" text-anchor="middle" fill="#fca5a5" font-size="13" font-weight="600">Email</text>
+  <text x="542" y="172" text-anchor="middle" fill="#9198a1" font-size="10">Inbound/outbound threading</text>
+
+  <rect x="650" y="132" width="185" height="50" rx="8" fill="#1e293b" stroke="#4ade80" stroke-width="1.2"/>
+  <text x="742" y="155" text-anchor="middle" fill="#86efac" font-size="13" font-weight="600">Live Chat Widget</text>
+  <text x="742" y="172" text-anchor="middle" fill="#9198a1" font-size="10">Preact, Shadow DOM</text>
+
+  <rect x="850" y="132" width="185" height="50" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.2"/>
+  <text x="942" y="155" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="600">REST API</text>
+  <text x="942" y="172" text-anchor="middle" fill="#9198a1" font-size="10">Programmatic access</text>
+
+  <!-- Arrows down -->
+  <path d="M200,200 L350,230" stroke="#60a5fa" stroke-width="3" marker-end="url(#arrowBlue)" fill="none"/>
+  <path d="M400,200 L450,230" stroke="#60a5fa" stroke-width="3" marker-end="url(#arrowBlue)" fill="none"/>
+  <path d="M600,200 L600,230" stroke="#60a5fa" stroke-width="3" marker-end="url(#arrowBlue)" fill="none"/>
+  <path d="M800,200 L700,230" stroke="#60a5fa" stroke-width="3" marker-end="url(#arrowBlue)" fill="none"/>
+  <path d="M950,200 L800,230" stroke="#60a5fa" stroke-width="3" marker-end="url(#arrowBlue)" fill="none"/>
+
+  <!-- ═══ MIDDLE: API Server ═══ -->
+  <rect x="30" y="230" width="750" height="280" rx="12" fill="#1c2333" stroke="#22d3ee" stroke-width="2"/>
+  <text x="405" y="258" text-anchor="middle" fill="#67e8f9" font-size="18" font-weight="700">API Server (Express + TypeScript)</text>
+
+  <!-- Core Modules -->
+  <rect x="50" y="272" width="340" height="220" rx="8" fill="#0e2a32" stroke="#22d3ee" stroke-width="1.2"/>
+  <text x="220" y="296" text-anchor="middle" fill="#67e8f9" font-size="14" font-weight="600">Core Modules</text>
+  <text x="70" y="320" fill="#c9d1d9" font-size="12">Ticket management (CRUD, assign, close)</text>
+  <text x="70" y="342" fill="#c9d1d9" font-size="12">Message routing across channels</text>
+  <text x="70" y="364" fill="#c9d1d9" font-size="12">Multi-tenant isolation (org scoping)</text>
+  <text x="70" y="386" fill="#c9d1d9" font-size="12">WebSocket (Socket.IO) real-time</text>
+  <text x="70" y="408" fill="#c9d1d9" font-size="12">Automation rules engine</text>
+  <text x="70" y="430" fill="#c9d1d9" font-size="12">AI features (summarize, suggest)</text>
+  <text x="70" y="452" fill="#c9d1d9" font-size="12">SLA tracking and escalation</text>
+  <text x="70" y="474" fill="#c9d1d9" font-size="12">Webhook dispatch system</text>
+
+  <!-- Middleware -->
+  <rect x="405" y="272" width="360" height="220" rx="8" fill="#0e2a32" stroke="#c084fc" stroke-width="1.2"/>
+  <text x="585" y="296" text-anchor="middle" fill="#d8b4fe" font-size="14" font-weight="600">Middleware &amp; Auth</text>
+  <text x="425" y="320" fill="#c9d1d9" font-size="12">JWT auth + refresh tokens</text>
+  <text x="425" y="342" fill="#c9d1d9" font-size="12">RBAC: owner / admin / agent / viewer</text>
+  <text x="425" y="364" fill="#c9d1d9" font-size="12">API key auth (per-tenant)</text>
+  <text x="425" y="386" fill="#c9d1d9" font-size="12">Rate limiting per route</text>
+  <text x="425" y="408" fill="#c9d1d9" font-size="12">Request validation (Zod)</text>
+  <text x="425" y="430" fill="#c9d1d9" font-size="12">Error handling + logging</text>
+  <text x="425" y="452" fill="#c9d1d9" font-size="12">File upload (multer)</text>
+  <text x="425" y="474" fill="#c9d1d9" font-size="12">CORS + Helmet + compression</text>
+
+  <!-- ═══ MIDDLE-RIGHT: Dashboard + Widget ═══ -->
+  <rect x="800" y="230" width="370" height="130" rx="12" fill="#1c2333" stroke="#fbbf24" stroke-width="2"/>
+  <text x="985" y="258" text-anchor="middle" fill="#fbbf24" font-size="18" font-weight="700">React Dashboard</text>
+  <text x="820" y="282" fill="#c9d1d9" font-size="12">Inbox, ticket detail, knowledge base</text>
+  <text x="820" y="304" fill="#c9d1d9" font-size="12">Team management, analytics</text>
+  <text x="820" y="326" fill="#c9d1d9" font-size="12">Settings, integrations, canned responses</text>
+  <text x="820" y="348" fill="#c9d1d9" font-size="12">Zustand state + React Query + Socket.IO</text>
+
+  <rect x="800" y="380" width="370" height="130" rx="12" fill="#1c2333" stroke="#4ade80" stroke-width="2"/>
+  <text x="985" y="408" text-anchor="middle" fill="#86efac" font-size="18" font-weight="700">Embeddable Widget</text>
+  <text x="820" y="432" fill="#c9d1d9" font-size="12">Preact (lightweight, 3KB gzip)</text>
+  <text x="820" y="454" fill="#c9d1d9" font-size="12">Shadow DOM isolation from host</text>
+  <text x="820" y="476" fill="#c9d1d9" font-size="12">Real-time messaging via Socket.IO</text>
+  <text x="820" y="498" fill="#c9d1d9" font-size="12">Customizable theme + branding</text>
+
+  <!-- Arrows -->
+  <path d="M780,380 L800,380" stroke="#fbbf24" stroke-width="3" marker-end="url(#arrowAmber)" fill="none"/>
+  <path d="M780,440 L800,440" stroke="#4ade80" stroke-width="3" marker-end="url(#arrowGreen)" fill="none"/>
+
+  <!-- ═══ Data Layer ═══ -->
+  <rect x="30" y="535" width="1140" height="200" rx="12" fill="#1c2333" stroke="#4ade80" stroke-width="2"/>
+  <text x="600" y="563" text-anchor="middle" fill="#4ade80" font-size="18" font-weight="700">Data Layer — Prisma ORM</text>
+
+  <!-- Schema models -->
+  <rect x="50" y="578" width="530" height="140" rx="8" fill="#1a2e1a" stroke="#4ade80" stroke-width="1.2"/>
+  <text x="315" y="602" text-anchor="middle" fill="#86efac" font-size="14" font-weight="600">PostgreSQL — 14 Prisma Models</text>
+  <text x="70" y="626" fill="#c9d1d9" font-size="12">Organization  ·  User  ·  Team  ·  Membership</text>
+  <text x="70" y="648" fill="#c9d1d9" font-size="12">Ticket  ·  Message  ·  Attachment  ·  Tag</text>
+  <text x="70" y="670" fill="#c9d1d9" font-size="12">ChannelConfig  ·  CannedResponse  ·  Article</text>
+  <text x="70" y="692" fill="#c9d1d9" font-size="12">AutomationRule  ·  WebhookEndpoint  ·  ApiKey</text>
+
+  <!-- Redis + Storage -->
+  <rect x="600" y="578" width="260" height="140" rx="8" fill="#1a2e1a" stroke="#22d3ee" stroke-width="1.2"/>
+  <text x="730" y="602" text-anchor="middle" fill="#67e8f9" font-size="14" font-weight="600">Redis</text>
+  <text x="620" y="626" fill="#c9d1d9" font-size="12">Socket.IO adapter</text>
+  <text x="620" y="648" fill="#c9d1d9" font-size="12">Session store</text>
+  <text x="620" y="670" fill="#c9d1d9" font-size="12">Rate limit counters</text>
+  <text x="620" y="692" fill="#c9d1d9" font-size="12">Pub/sub events</text>
+
+  <rect x="880" y="578" width="280" height="140" rx="8" fill="#1a2e1a" stroke="#fbbf24" stroke-width="1.2"/>
+  <text x="1020" y="602" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="600">File Storage</text>
+  <text x="900" y="626" fill="#c9d1d9" font-size="12">Local disk (dev)</text>
+  <text x="900" y="648" fill="#c9d1d9" font-size="12">S3-compatible (production)</text>
+  <text x="900" y="670" fill="#c9d1d9" font-size="12">Ticket attachments</text>
+  <text x="900" y="692" fill="#c9d1d9" font-size="12">Knowledge base images</text>
+
+  <!-- Arrows to data -->
+  <path d="M400,510 L400,535" stroke="#4ade80" stroke-width="3" marker-end="url(#arrowGreen)" fill="none"/>
+  <path d="M700,510 L700,535" stroke="#4ade80" stroke-width="3" marker-end="url(#arrowGreen)" fill="none"/>
+
+  <!-- ═══ Deploy ═══ -->
+  <rect x="30" y="760" width="1140" height="60" rx="12" fill="#1c2333" stroke="#7d8590" stroke-width="1.5"/>
+  <text x="600" y="798" text-anchor="middle" fill="#f0f6fc" font-size="15" font-weight="700">Turborepo monorepo  ·  Docker Compose  ·  GitHub Actions CI  ·  Prisma migrations  ·  pnpm workspaces</text>
+
+  <text x="600" y="865" text-anchor="middle" fill="#7d8590" font-size="12">TypeScript  ·  Express  ·  React 18  ·  Preact  ·  Prisma  ·  PostgreSQL  ·  Redis  ·  Socket.IO  ·  Zustand</text>
+</svg>

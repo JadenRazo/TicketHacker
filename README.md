@@ -2,6 +2,10 @@
 
 Multi-tenant ticketing platform with omnichannel support. Built for teams that need to manage customer conversations across chat widgets, Discord, Telegram, email, and API integrations from a single dashboard — with real-time updates, automation, and AI-powered features.
 
+## Architecture
+
+![Architecture](docs/architecture.svg)
+
 ## Features
 
 **Omnichannel Messaging**
