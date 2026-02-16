@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 @Injectable()
 export class PrismaService
@@ -15,16 +15,12 @@ export class PrismaService
   }
 
   async setTenantContext(tenantId: string) {
-    await this.$executeRawUnsafe(
-      `SET LOCAL app.current_tenant = '${tenantId}'`,
-    );
+    await this.$executeRaw`SET LOCAL app.current_tenant = ${tenantId}`;
   }
 
   async withTenant<T>(tenantId: string, fn: () => Promise<T>): Promise<T> {
     return this.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(
-        `SET LOCAL app.current_tenant = '${tenantId}'`,
-      );
+      await tx.$executeRaw`SET LOCAL app.current_tenant = ${tenantId}`;
       return fn();
     });
   }

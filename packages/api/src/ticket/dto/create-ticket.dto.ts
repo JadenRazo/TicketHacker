@@ -1,6 +1,7 @@
 import {
   IsString,
   MinLength,
+  MaxLength,
   IsUUID,
   IsEnum,
   IsOptional,
@@ -12,6 +13,7 @@ import { Channel, Priority } from '@prisma/client';
 export class CreateTicketDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(500)
   subject: string;
 
   @IsUUID()

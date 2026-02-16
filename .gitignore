@@ -16,3 +16,4 @@ coverage/
 *.pfx
 .claude*
 prisma/migrations/
+services/realtime/realtime

@@ -1,9 +1,10 @@
-import { IsString, IsOptional, IsNumber, Min, Max } from 'class-validator';
+import { IsString, MaxLength, IsOptional, IsNumber, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MessageFiltersDto {
   @IsString()
   @IsOptional()
+  @MaxLength(255)
   cursor?: string;
 
   @IsNumber()

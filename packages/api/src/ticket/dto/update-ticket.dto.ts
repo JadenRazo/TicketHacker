@@ -1,5 +1,6 @@
 import {
   IsString,
+  MaxLength,
   IsEnum,
   IsUUID,
   IsOptional,
@@ -12,6 +13,7 @@ import { TicketStatus, Priority } from '@prisma/client';
 export class UpdateTicketDto {
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   subject?: string;
 
   @IsEnum(TicketStatus)

@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsUUID,
   IsString,
+  MaxLength,
   IsBoolean,
   IsNumber,
   Min,
@@ -43,6 +44,7 @@ export class TicketFiltersDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   search?: string;
 
   @IsBoolean()
@@ -56,14 +58,17 @@ export class TicketFiltersDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(50)
   sortBy?: string = 'createdAt';
 
   @IsString()
   @IsOptional()
+  @MaxLength(10)
   sortOrder?: 'asc' | 'desc' = 'desc';
 
   @IsString()
   @IsOptional()
+  @MaxLength(255)
   cursor?: string;
 
   @IsNumber()

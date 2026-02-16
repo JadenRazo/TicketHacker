@@ -34,7 +34,13 @@ interface JwtPayload {
 }
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: [
+      process.env.APP_URL || 'http://localhost:5173',
+      process.env.WIDGET_URL || 'http://localhost:5174',
+    ],
+    credentials: true,
+  },
   namespace: '/',
 })
 export class EventsGateway
@@ -228,6 +234,10 @@ export class EventsGateway
 
     this.server.to(`tenant:${tenantId}`).emit('ticket:created', ticket);
 
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'ticket.created', tenant_id: tenantId, ticket,
+    }));
+
     this.logger.debug(
       `Broadcast ticket:created to tenant ${tenantId} - ticket ${ticket.id}`,
     );
@@ -239,6 +249,10 @@ export class EventsGateway
 
     this.server.to(`tenant:${tenantId}`).emit('ticket:updated', ticket);
     this.server.to(`ticket:${ticket.id}`).emit('ticket:updated', ticket);
+
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'ticket.updated', tenant_id: tenantId, ticket,
+    }));
 
     this.logger.debug(
       `Broadcast ticket:updated to tenant ${tenantId} and ticket room ${ticket.id}`,
@@ -258,6 +272,10 @@ export class EventsGateway
       targetId,
     });
 
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'ticket.merged', tenant_id: tenantId, source_id: sourceId, target_id: targetId,
+    }));
+
     this.logger.debug(
       `Broadcast ticket:merged to tenant ${tenantId} - source ${sourceId} to target ${targetId}`,
     );
@@ -269,9 +287,13 @@ export class EventsGateway
     message: any;
     ticketId: string;
   }) {
-    const { ticketId, message } = payload;
+    const { tenantId, ticketId, message } = payload;
 
     this.server.to(`ticket:${ticketId}`).emit('message:created', message);
+
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'message.created', tenant_id: tenantId, ticket_id: ticketId, message,
+    }));
 
     this.logger.debug(
       `Broadcast message:created to ticket room ${ticketId} - message ${message.id}`,

@@ -1,7 +1,8 @@
-import { IsString, IsObject, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, MaxLength, IsObject, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateSavedViewDto {
   @IsString()
+  @MaxLength(100)
   name: string;
 
   @IsObject()
@@ -9,10 +10,12 @@ export class CreateSavedViewDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   sortBy?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(10)
   sortOrder?: string;
 
   @IsOptional()
