@@ -21,11 +21,11 @@ services:
     image: redis:7-alpine
     container_name: tickethacker-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
