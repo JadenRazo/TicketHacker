@@ -5,6 +5,7 @@ import { EventsGateway } from './events.gateway';
 
 @Module({
   imports: [
+    ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

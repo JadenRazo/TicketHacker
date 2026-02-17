@@ -6,6 +6,7 @@ import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { TicketFiltersDto } from './dto/ticket-filters.dto';
 import { BulkUpdateDto } from './dto/bulk-update.dto';
 import { TicketStatus } from '@prisma/client';
+import { paginateResult } from '../common/utils/paginate';
 
 @Injectable()
 export class TicketService {
@@ -146,31 +147,13 @@ export class TicketService {
 
     const tickets = await this.prisma.ticket.findMany(findManyArgs);
 
-    const hasMore = tickets.length > limit;
-    const data = hasMore ? tickets.slice(0, limit) : tickets;
-    const nextCursor = hasMore ? data[data.length - 1].id : null;
-
-    return {
-      data,
-      nextCursor,
-    };
+    return paginateResult(tickets, limit);
   }
 
   async findOne(tenantId: string, ticketId: string) {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
       include: {
-        messages: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            sender: {
-              select: { id: true, name: true, avatarUrl: true },
-            },
-            contact: {
-              select: { id: true, name: true, email: true },
-            },
-          },
-        },
         assignee: {
           select: { id: true, name: true, email: true, avatarUrl: true },
         },
@@ -185,6 +168,9 @@ export class TicketService {
         },
         team: {
           select: { id: true, name: true, description: true },
+        },
+        _count: {
+          select: { messages: true },
         },
       },
     });

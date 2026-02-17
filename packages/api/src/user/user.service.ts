@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
+import { paginateResult } from '../common/utils/paginate';
 
 @Injectable()
 export class UserService {
@@ -79,14 +80,7 @@ export class UserService {
       },
     });
 
-    const hasMore = users.length > limit;
-    const data = hasMore ? users.slice(0, -1) : users;
-    const nextCursor = hasMore ? data[data.length - 1].id : null;
-
-    return {
-      data,
-      nextCursor,
-    };
+    return paginateResult(users, limit);
   }
 
   async findOne(tenantId: string, userId: string) {

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { MessageFiltersDto } from './dto/message-filters.dto';
 import { MessageDirection, TicketStatus, MessageType } from '@prisma/client';
+import { paginateResult } from '../common/utils/paginate';
 
 @Injectable()
 export class MessageService {
@@ -104,13 +105,6 @@ export class MessageService {
 
     const messages = await this.prisma.message.findMany(findManyArgs);
 
-    const hasMore = messages.length > limit;
-    const data = hasMore ? messages.slice(0, limit) : messages;
-    const nextCursor = hasMore ? data[data.length - 1].id : null;
-
-    return {
-      data,
-      nextCursor,
-    };
+    return paginateResult(messages, limit);
   }
 }

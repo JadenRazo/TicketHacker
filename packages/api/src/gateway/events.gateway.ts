@@ -12,6 +12,7 @@ import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { OnEvent } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
 import { Logger } from '@nestjs/common';
@@ -35,10 +36,7 @@ interface JwtPayload {
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      process.env.APP_URL || 'http://localhost:5173',
-      process.env.WIDGET_URL || 'http://localhost:5174',
-    ],
+    origin: true,
     credentials: true,
   },
   namespace: '/',
@@ -52,20 +50,26 @@ export class EventsGateway
   private readonly logger = new Logger(EventsGateway.name);
   private redisClient: Redis;
 
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private configService: ConfigService,
+  ) {}
 
   afterInit(server: Server) {
-    const redisHost = process.env.REDIS_HOST || 'localhost';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6381', 10);
+    const redisHost = this.configService.get<string>('REDIS_HOST', 'localhost');
+    const redisPort = this.configService.get<number>('REDIS_PORT', 6381);
+    const redisPassword = this.configService.get<string>('REDIS_PASSWORD');
 
-    this.redisClient = new Redis({
-      host: redisHost,
-      port: redisPort,
-    });
+    const redisOpts: any = { host: redisHost, port: redisPort };
+    if (redisPassword) {
+      redisOpts.password = redisPassword;
+    }
+
+    this.redisClient = new Redis(redisOpts);
 
     try {
-      const pubClient = new Redis({ host: redisHost, port: redisPort });
-      const subClient = new Redis({ host: redisHost, port: redisPort });
+      const pubClient = new Redis(redisOpts);
+      const subClient = new Redis(redisOpts);
       const adapter = createAdapter(pubClient, subClient);
       (server as any).adapter(adapter);
       this.logger.log('WebSocket gateway initialized with Redis adapter');
@@ -87,7 +91,7 @@ export class EventsGateway
       }
 
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
+        secret: this.configService.get<string>('JWT_SECRET'),
       });
 
       if (!payload || !payload.sub || !payload.tenantId) {

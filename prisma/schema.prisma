@@ -190,6 +190,10 @@ model Ticket {
   messages          Message[]
   mergedInto        Ticket?         @relation("TicketMerges", fields: [mergedIntoId], references: [id], onDelete: SetNull)
   mergedTickets     Ticket[]        @relation("TicketMerges")
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, assigneeId])
+  @@index([tenantId, contactId])
 }
 
 model Contact {
@@ -211,6 +215,7 @@ model Contact {
   messages             Message[]
 
   @@unique([tenantId, channel, externalId])
+  @@index([tenantId, channel])
 }
 
 model Message {
@@ -233,6 +238,9 @@ model Message {
   sender            User?               @relation(fields: [senderId], references: [id], onDelete: SetNull)
   contact           Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
   attachments       Attachment[]
+
+  @@index([ticketId, createdAt])
+  @@index([tenantId])
 }
 
 model Attachment {

@@ -591,6 +591,48 @@ CREATE UNIQUE INDEX "User_tenantId_email_key" ON public."User" USING btree ("ten
 
 
 --
+-- Name: Ticket_tenantId_status_createdAt_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Ticket_tenantId_status_createdAt_idx" ON public."Ticket" USING btree ("tenantId", status, "createdAt");
+
+
+--
+-- Name: Ticket_tenantId_assigneeId_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Ticket_tenantId_assigneeId_idx" ON public."Ticket" USING btree ("tenantId", "assigneeId");
+
+
+--
+-- Name: Ticket_tenantId_contactId_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Ticket_tenantId_contactId_idx" ON public."Ticket" USING btree ("tenantId", "contactId");
+
+
+--
+-- Name: Message_ticketId_createdAt_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Message_ticketId_createdAt_idx" ON public."Message" USING btree ("ticketId", "createdAt");
+
+
+--
+-- Name: Message_tenantId_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Message_tenantId_idx" ON public."Message" USING btree ("tenantId");
+
+
+--
+-- Name: Contact_tenantId_channel_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Contact_tenantId_channel_idx" ON public."Contact" USING btree ("tenantId", channel);
+
+
+--
 -- Name: Attachment Attachment_messageId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
 --
 

@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
+let socketReadyCallbacks: Array<(s: Socket) => void> = [];
+
+function notifySocketReady(s: Socket) {
+  for (const cb of socketReadyCallbacks) {
+    cb(s);
+  }
+  socketReadyCallbacks = [];
+}
 
 export function connectSocket(token: string): Socket {
   if (socket?.connected) {
@@ -16,19 +24,10 @@ export function connectSocket(token: string): Socket {
     reconnectionDelay: 1000,
   });
 
-  socket.on('connect', () => {
-    console.log('Socket connected');
-  });
+  const s = socket;
+  notifySocketReady(s);
 
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected');
-  });
-
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
-  });
-
-  return socket;
+  return s;
 }
 
 export function disconnectSocket(): void {
@@ -42,20 +41,28 @@ export function getSocket(): Socket | null {
   return socket;
 }
 
+function onSocketReady(callback: (s: Socket) => void) {
+  if (socket) {
+    callback(socket);
+  } else {
+    socketReadyCallbacks.push(callback);
+  }
+}
+
 export function useSocket() {
   const [currentSocket, setCurrentSocket] = useState<Socket | null>(socket);
   const [isConnected, setIsConnected] = useState(socket?.connected || false);
 
   useEffect(() => {
-    // Poll for socket availability every 100ms
-    const checkInterval = setInterval(() => {
-      if (socket && socket !== currentSocket) {
-        setCurrentSocket(socket);
-      }
-    }, 100);
+    if (socket) {
+      setCurrentSocket(socket);
+      return;
+    }
 
-    return () => clearInterval(checkInterval);
-  }, [currentSocket]);
+    onSocketReady((s) => {
+      setCurrentSocket(s);
+    });
+  }, []);
 
   useEffect(() => {
     if (!currentSocket) return;
@@ -63,7 +70,6 @@ export function useSocket() {
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
 
-    // Set initial state
     setIsConnected(currentSocket.connected);
 
     currentSocket.on('connect', onConnect);
@@ -123,16 +129,13 @@ const typingTimeouts = new Map<string, NodeJS.Timeout>();
 export function emitTyping(ticketId: string): void {
   if (!socket) return;
 
-  // Emit start event
   socket.emit('ticket:typing:start', ticketId);
 
-  // Clear existing timeout for this ticket
   const existingTimeout = typingTimeouts.get(ticketId);
   if (existingTimeout) {
     clearTimeout(existingTimeout);
   }
 
-  // Set new timeout to emit stop event after 2 seconds
   const timeout = setTimeout(() => {
     socket?.emit('ticket:typing:stop', ticketId);
     typingTimeouts.delete(ticketId);

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { paginateResult } from '../common/utils/paginate';
 
 @Injectable()
 export class ContactService {
@@ -44,11 +45,7 @@ export class ContactService {
       },
     });
 
-    const hasMore = contacts.length > limit;
-    const data = hasMore ? contacts.slice(0, -1) : contacts;
-    const nextCursor = hasMore ? data[data.length - 1].id : null;
-
-    return { data, nextCursor };
+    return paginateResult(contacts, limit);
   }
 
   async findOne(tenantId: string, contactId: string) {
