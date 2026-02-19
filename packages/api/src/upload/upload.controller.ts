@@ -111,7 +111,11 @@ export class UploadController {
     const contentType = mimeMap[ext] || 'application/octet-stream';
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    const safeInlineTypes = new Set([
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
+    ]);
+    const disposition = safeInlineTypes.has(contentType) ? 'inline' : 'attachment';
+    res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
     res.setHeader('Cache-Control', 'private, max-age=86400');
 
     const stream = fs.createReadStream(filePath);

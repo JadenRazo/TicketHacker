@@ -1388,5 +1388,33 @@ CREATE POLICY tenant_isolation ON public."WebhookDelivery" USING (("tenantId" = 
 
 
 --
+-- Performance indexes for foreign key lookups
+--
+
+CREATE INDEX IF NOT EXISTS "Ticket_mergedIntoId_idx" ON public."Ticket" USING btree ("mergedIntoId");
+
+CREATE INDEX IF NOT EXISTS "Message_senderId_idx" ON public."Message" USING btree ("senderId");
+
+CREATE INDEX IF NOT EXISTS "Message_contactId_idx" ON public."Message" USING btree ("contactId");
+
+CREATE INDEX IF NOT EXISTS "User_tenantId_idx" ON public."User" USING btree ("tenantId");
+
+
+--
+-- Fulltext search index for knowledge base articles
+--
+
+CREATE INDEX IF NOT EXISTS "Article_fulltext_idx" ON public."Article"
+  USING gin (to_tsvector('english', title || ' ' || content));
+
+
+--
+-- Query timeout protection
+--
+
+ALTER DATABASE tickethacker SET statement_timeout = '30s';
+
+
+--
 -- PostgreSQL database dump complete
 --

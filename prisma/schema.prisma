@@ -142,6 +142,7 @@ model User {
   notifications     Notification[]
 
   @@unique([tenantId, email])
+  @@index([tenantId])
 }
 
 model Team {
@@ -208,6 +209,7 @@ model Ticket {
   @@index([tenantId, status, createdAt])
   @@index([tenantId, assigneeId])
   @@index([tenantId, contactId])
+  @@index([mergedIntoId])
 }
 
 model Contact {
@@ -255,6 +257,8 @@ model Message {
 
   @@index([ticketId, createdAt])
   @@index([tenantId])
+  @@index([senderId])
+  @@index([contactId])
 }
 
 model Attachment {

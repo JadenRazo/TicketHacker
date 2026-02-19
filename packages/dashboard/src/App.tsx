@@ -1,22 +1,25 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import TicketListPage from './pages/TicketListPage';
 import TicketDetailPage from './pages/TicketDetailPage';
-import SettingsPage from './pages/SettingsPage';
-import ContactsPage from './pages/ContactsPage';
-import CannedResponsesPage from './pages/CannedResponsesPage';
-import AutomationsPage from './pages/AutomationsPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import KnowledgeBasePage from './pages/KnowledgeBasePage';
 import PortalLoginPage from './pages/portal/PortalLoginPage';
 import PortalVerifyPage from './pages/portal/PortalVerifyPage';
 import PortalTicketsPage from './pages/portal/PortalTicketsPage';
 import PortalTicketDetailPage from './pages/portal/PortalTicketDetailPage';
 
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ContactsPage = lazy(() => import('./pages/ContactsPage'));
+const CannedResponsesPage = lazy(() => import('./pages/CannedResponsesPage'));
+const AutomationsPage = lazy(() => import('./pages/AutomationsPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const KnowledgeBasePage = lazy(() => import('./pages/KnowledgeBasePage'));
+
 function App() {
   return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
     <Routes>
       {/* Public customer portal – no agent auth required */}
       <Route path="/portal/:tenantSlug" element={<PortalLoginPage />} />
@@ -40,6 +43,7 @@ function App() {
         </Route>
       </Route>
     </Routes>
+    </Suspense>
   );
 }
 

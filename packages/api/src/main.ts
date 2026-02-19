@@ -6,26 +6,28 @@ import { Logger } from 'nestjs-pino';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import * as fs from 'fs';
+import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
+import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   const config = app.get(ConfigService);
 
   // Ensure the uploads directory exists at project root.
-  // __dirname in the compiled output is dist/src, so three levels up gets us to project root.
   const uploadsDir = join(__dirname, '..', '..', '..', 'uploads');
   fs.mkdirSync(uploadsDir, { recursive: true });
 
-  // Serve uploaded files at /uploads/<tenantId>/<filename>.
-  // The upload controller also streams files via GET /api/uploads/:tenantId/:filename,
-  // but this static middleware handles the route without the /api prefix,
-  // making it possible to reference files directly from the browser.
-  app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
-
   app.useLogger(app.get(Logger));
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
+  app.use(compression());
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalInterceptors(new AuditLogInterceptor());
 
   app.setGlobalPrefix(config.get('API_PREFIX', 'api'), {
     exclude: ['health'],

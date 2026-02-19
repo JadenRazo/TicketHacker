@@ -14,4 +14,14 @@ export default defineConfig({
       path: '/__vite_hmr',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          query: ['@tanstack/react-query'],
+        },
+      },
+    },
+  },
 });

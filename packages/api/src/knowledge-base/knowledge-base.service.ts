@@ -311,28 +311,26 @@ export class KnowledgeBaseService implements OnModuleInit {
         e instanceof Error ? e.message : String(e),
       );
 
-      // Fallback: plain text search ordered by view popularity
-      return this.prisma.article.findMany({
-        where: {
-          tenantId,
-          status: ArticleStatus.PUBLISHED,
-          OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { content: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        select: {
-          id: true,
-          title: true,
-          content: true,
-          slug: true,
-          category: true,
-          tags: true,
-          viewCount: true,
-        },
-        take: limit,
-        orderBy: { viewCount: 'desc' },
-      });
+      // Fallback: PostgreSQL fulltext search with ts_rank scoring
+      return this.prisma.$queryRaw<
+        Array<{
+          id: string;
+          title: string;
+          content: string;
+          slug: string;
+          category: string | null;
+          tags: string[];
+          viewCount: number;
+        }>
+      >`
+        SELECT id, title, content, slug, category, tags, "viewCount"
+        FROM "Article"
+        WHERE "tenantId" = ${tenantId}
+          AND status = 'PUBLISHED'
+          AND to_tsvector('english', title || ' ' || content) @@ plainto_tsquery('english', ${query})
+        ORDER BY ts_rank(to_tsvector('english', title || ' ' || content), plainto_tsquery('english', ${query})) DESC
+        LIMIT ${limit}
+      `;
     }
   }
 

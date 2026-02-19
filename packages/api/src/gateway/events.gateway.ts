@@ -36,7 +36,10 @@ interface JwtPayload {
 
 @WebSocketGateway({
   cors: {
-    origin: true,
+    origin: [
+      process.env.APP_URL || 'http://localhost:5173',
+      process.env.WIDGET_URL || 'http://localhost:5174',
+    ],
     credentials: true,
   },
   namespace: '/',

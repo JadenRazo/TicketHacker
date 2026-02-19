@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import { KnowledgeBaseService } from './knowledge-base.service';
 import { TenantGuard } from '../common/guards/tenant.guard';
@@ -131,6 +132,7 @@ export class KnowledgeBasePublicController {
   }
 
   @Get(':tenantSlug/search')
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   async search(
     @Param('tenantSlug') tenantSlug: string,
     @Query('q') query: string,

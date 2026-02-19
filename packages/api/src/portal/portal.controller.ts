@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PortalService } from './portal.service';
 import { PortalAuthGuard } from './portal-auth.guard';
 import { IsEmail, IsString, MinLength } from 'class-validator';
@@ -45,6 +46,7 @@ export class PortalController {
    * Always returns the same generic message to prevent email enumeration.
    */
   @Post(':tenantSlug/auth/request')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
   requestMagicLink(
     @Param('tenantSlug') tenantSlug: string,
@@ -58,6 +60,7 @@ export class PortalController {
    * Verifies a magic link token and issues a longer-lived session token.
    */
   @Post(':tenantSlug/auth/verify')
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   verifyToken(
     @Param('tenantSlug') tenantSlug: string,
     @Body() dto: VerifyTokenDto,
