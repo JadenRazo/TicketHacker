@@ -14,7 +14,11 @@ import {
   mergeTickets,
   getTickets,
   getCustomFieldDefinitions,
+  uploadFile,
+  getContactHealth,
   type CustomFieldDefinition,
+  type AttachmentInfo,
+  type HealthScore,
   aiTriageTicket,
   aiDraftReply,
   aiResolveTicket,
@@ -46,6 +50,62 @@ import AiActivityTimeline from '../components/AiActivityTimeline';
 const STATUS_OPTIONS = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'];
 const PRIORITY_OPTIONS = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 
+const HEALTH_LEVEL_STYLES: Record<HealthScore['level'], { dot: string; label: string; badge: string }> = {
+  healthy: {
+    dot: 'bg-green-500',
+    label: 'Healthy',
+    badge: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
+  },
+  at_risk: {
+    dot: 'bg-yellow-400',
+    label: 'At Risk',
+    badge: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
+  },
+  critical: {
+    dot: 'bg-red-500',
+    label: 'Critical',
+    badge: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
+  },
+};
+
+function ContactHealthWidget({ contactId }: { contactId: string }) {
+  const { data: health, isLoading } = useQuery({
+    queryKey: ['contact-health', contactId],
+    queryFn: () => getContactHealth(contactId),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Contact Health
+        </label>
+        <div className="text-xs text-gray-400 dark:text-gray-500">Calculating...</div>
+      </div>
+    );
+  }
+
+  if (!health) return null;
+
+  const styles = HEALTH_LEVEL_STYLES[health.level];
+
+  return (
+    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+        Contact Health
+      </label>
+      <div className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs font-medium ${styles.badge}`}>
+        <span className={`w-2 h-2 rounded-full ${styles.dot}`} />
+        <span>{health.score}/100</span>
+        <span className="opacity-75">&mdash;</span>
+        <span>{styles.label}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -53,6 +113,7 @@ export default function TicketDetailPage() {
   const { user } = useAuthStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [messageType, setMessageType] = useState<'TEXT' | 'NOTE'>('TEXT');
   const [showCannedResponses, setShowCannedResponses] = useState(false);
@@ -67,6 +128,8 @@ export default function TicketDetailPage() {
   const [aiResult, setAiResult] = useState<AgentResult | null>(null);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [showAiActivity, setShowAiActivity] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<AttachmentInfo[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const {
     data: ticket,
@@ -128,16 +191,18 @@ export default function TicketDetailPage() {
   const { viewers, typingUsers } = useTicketRoom(id);
 
   const createMessageMutation = useMutation({
-    mutationFn: async (data: { content: string; messageType: 'TEXT' | 'NOTE' }) => {
+    mutationFn: async (data: { content: string; messageType: 'TEXT' | 'NOTE'; attachmentIds?: string[] }) => {
       return createMessage(id!, {
         contentHtml: data.content,
         messageType: data.messageType,
+        attachmentIds: data.attachmentIds,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', id] });
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
       editor?.commands.clearContent();
+      setPendingAttachments([]);
       showToast('Message sent successfully', 'success');
     },
     onError: (error: Error) => {
@@ -335,7 +400,36 @@ export default function TicketDetailPage() {
     const content = editor?.getHTML();
     if (!content || content === '<p></p>') return;
 
-    createMessageMutation.mutate({ content, messageType });
+    createMessageMutation.mutate({
+      content,
+      messageType,
+      attachmentIds: pendingAttachments.map((a) => a.id),
+    });
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const uploads = await Promise.all(
+        Array.from(files).map((file) => uploadFile(file))
+      );
+      setPendingAttachments((prev) => [...prev, ...uploads]);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
+    } finally {
+      setIsUploading(false);
+      // Reset input so the same file can be selected again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePendingAttachment = (attachmentId: string) => {
+    setPendingAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
   };
 
   const handleInsertCannedResponse = (response: string) => {
@@ -583,6 +677,43 @@ export default function TicketDetailPage() {
                             __html: message.contentHtml || message.contentText || '',
                           }}
                         />
+                        {message.attachments && message.attachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {message.attachments.map((attachment) => {
+                              const isImage = attachment.mimeType.startsWith('image/');
+                              const fileUrl = `${import.meta.env.VITE_API_URL || '/api'}${attachment.url}`;
+                              const sizeKb = Math.round(attachment.sizeBytes / 1024);
+                              return isImage ? (
+                                <a
+                                  key={attachment.id}
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  <img
+                                    src={fileUrl}
+                                    alt={attachment.filename}
+                                    className="max-h-32 max-w-xs rounded border border-gray-200 dark:border-gray-600 object-cover hover:opacity-90 transition-opacity"
+                                  />
+                                </a>
+                              ) : (
+                                <a
+                                  key={attachment.id}
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download={attachment.filename}
+                                  className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm text-gray-700 dark:text-gray-300 max-w-xs"
+                                >
+                                  <span className="text-base leading-none">📎</span>
+                                  <span className="truncate flex-1">{attachment.filename}</span>
+                                  <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{sizeKb} KB</span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -650,6 +781,39 @@ export default function TicketDetailPage() {
             )}
           </div>
 
+          {pendingAttachments.length > 0 && (
+            <div className="px-3 pt-2 pb-1 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
+              {pendingAttachments.map((attachment) => {
+                const isImage = attachment.mimeType.startsWith('image/');
+                const fileUrl = `${import.meta.env.VITE_API_URL || '/api'}${attachment.url}`;
+                return (
+                  <div
+                    key={attachment.id}
+                    className="relative flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 max-w-[200px]"
+                  >
+                    {isImage ? (
+                      <img
+                        src={fileUrl}
+                        alt={attachment.filename}
+                        className="h-6 w-6 rounded object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <span className="flex-shrink-0">📎</span>
+                    )}
+                    <span className="truncate">{attachment.filename}</span>
+                    <button
+                      onClick={() => handleRemovePendingAttachment(attachment.id)}
+                      className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-1"
+                      title="Remove attachment"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="p-3 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
@@ -672,14 +836,44 @@ export default function TicketDetailPage() {
               >
                 <span className="italic text-sm">I</span>
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+                accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className={clsx(
+                  'p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors',
+                  isUploading && 'opacity-50 cursor-not-allowed'
+                )}
+                title={isUploading ? 'Uploading...' : 'Attach file'}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                >
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
             </div>
 
             <button
               onClick={handleSendMessage}
-              disabled={createMessageMutation.isPending}
+              disabled={createMessageMutation.isPending || isUploading}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-md transition-colors"
             >
-              {createMessageMutation.isPending ? 'Sending...' : 'Send'}
+              {createMessageMutation.isPending ? 'Sending...' : isUploading ? 'Uploading...' : 'Send'}
             </button>
           </div>
         </div>
@@ -687,6 +881,10 @@ export default function TicketDetailPage() {
 
       <div className="w-1/3 bg-white dark:bg-gray-800 p-6 overflow-y-auto">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ticket Details</h2>
+
+        {ticket.contact?.id && (
+          <ContactHealthWidget contactId={ticket.contact.id} />
+        )}
 
         <div className="space-y-4">
           <div>
@@ -917,6 +1115,47 @@ export default function TicketDetailPage() {
                 Updated: {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true })}
               </div>
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Customer Rating
+            </label>
+            {ticket.rating ? (
+              <div>
+                <div className="flex items-center gap-0.5 mb-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <svg
+                      key={star}
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={clsx(
+                        'w-5 h-5',
+                        star <= ticket.rating!.rating
+                          ? 'text-yellow-400'
+                          : 'text-gray-300 dark:text-gray-600',
+                      )}
+                      fill="currentColor"
+                    >
+                      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                    </svg>
+                  ))}
+                  <span className="ml-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {ticket.rating.rating}/5
+                  </span>
+                </div>
+                {ticket.rating.comment && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 italic mt-1">
+                    "{ticket.rating.comment}"
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  {formatDistanceToNow(new Date(ticket.rating.createdAt), { addSuffix: true })}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 dark:text-gray-500">No rating yet</p>
+            )}
           </div>
 
           <div className="pt-4 space-y-2">

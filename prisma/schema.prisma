@@ -79,6 +79,12 @@ enum CustomFieldType {
   BOOLEAN
 }
 
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 // Models
 model Tenant {
   id                       String                    @id @default(uuid())
@@ -103,6 +109,11 @@ model Tenant {
   customFieldDefinitions   CustomFieldDefinition[]
   attachments              Attachment[]
   teamMembers              TeamMember[]
+  articles                 Article[]
+  ticketRatings            TicketRating[]
+  webhookEndpoints         WebhookEndpoint[]
+  webhookDeliveries        WebhookDelivery[]
+  notifications            Notification[]
 }
 
 model User {
@@ -127,6 +138,8 @@ model User {
   savedViews        SavedView[]
   macros            Macro[]
   teamMembers       TeamMember[]
+  articles          Article[]
+  notifications     Notification[]
 
   @@unique([tenantId, email])
 }
@@ -190,6 +203,7 @@ model Ticket {
   messages          Message[]
   mergedInto        Ticket?         @relation("TicketMerges", fields: [mergedIntoId], references: [id], onDelete: SetNull)
   mergedTickets     Ticket[]        @relation("TicketMerges")
+  rating            TicketRating?
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, assigneeId])
@@ -246,7 +260,7 @@ model Message {
 model Attachment {
   id                String          @id @default(uuid())
   tenantId          String
-  messageId         String
+  messageId         String?
   filename          String
   mimeType          String
   sizeBytes         Int
@@ -255,7 +269,7 @@ model Attachment {
 
   // Relations
   tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  message           Message         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message           Message?        @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
 model CannedResponse {
@@ -351,4 +365,102 @@ model CustomFieldDefinition {
 
   // Relations
   tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Article {
+  id                String          @id @default(uuid())
+  tenantId          String
+  title             String
+  content           String
+  slug              String
+  status            ArticleStatus   @default(DRAFT)
+  category          String?
+  tags              String[]        @default([])
+  viewCount         Int             @default(0)
+  helpfulCount      Int             @default(0)
+  notHelpfulCount   Int             @default(0)
+  authorId          String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author            User?           @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+}
+
+model TicketRating {
+  id          String    @id @default(uuid())
+  tenantId    String
+  ticketId    String
+  contactId   String?
+  rating      Int       // 1-5
+  comment     String?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket      Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId])
+  @@index([tenantId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  type      String
+  title     String
+  body      String
+  ticketId  String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([tenantId])
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(uuid())
+  tenantId    String
+  url         String
+  secret      String
+  events      String[] @default([])
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@index([tenantId])
+}
+
+model WebhookDelivery {
+  id           String   @id @default(uuid())
+  tenantId     String
+  endpointId   String
+  event        String
+  payload      Json
+  statusCode   Int?
+  responseBody String?
+  success      Boolean  @default(false)
+  attempt      Int      @default(1)
+  deliveredAt  DateTime @default(now())
+
+  // Relations
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([endpointId, deliveredAt])
+  @@index([tenantId])
 }

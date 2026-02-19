@@ -60,6 +60,13 @@ export class AutomationService {
     });
   }
 
+  async findActiveByTenant(tenantId: string) {
+    return this.prisma.automationRule.findMany({
+      where: { tenantId, isActive: true },
+      orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+    });
+  }
+
   async remove(tenantId: string, id: string) {
     const automation = await this.prisma.automationRule.findUnique({
       where: { id },

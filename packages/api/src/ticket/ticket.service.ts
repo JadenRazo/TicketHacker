@@ -169,6 +169,14 @@ export class TicketService {
         team: {
           select: { id: true, name: true, description: true },
         },
+        rating: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+          },
+        },
         _count: {
           select: { messages: true },
         },
@@ -231,6 +239,7 @@ export class TicketService {
     this.eventEmitter.emit('ticket.updated', {
       tenantId,
       ticket: updatedTicket,
+      previousAssigneeId: ticket.assigneeId ?? undefined,
     });
 
     return updatedTicket;

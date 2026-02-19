@@ -233,11 +233,34 @@ export class WidgetService {
     conversationId: string,
     contactId: string,
     rating: number,
+    comment?: string,
   ) {
+    // Update the legacy per-contact satisfaction rating for backward compatibility
     await this.prisma.contact.update({
       where: { id: contactId },
       data: { satisfactionRating: rating },
     });
+
+    // Upsert a per-ticket TicketRating record so CSAT data is tracked at the
+    // ticket level and never silently overwritten across conversations.
+    await this.prisma.ticketRating.upsert({
+      where: { ticketId: conversationId },
+      update: {
+        rating,
+        comment: comment ?? null,
+      },
+      create: {
+        tenantId,
+        ticketId: conversationId,
+        contactId,
+        rating,
+        comment: comment ?? null,
+      },
+    });
+
+    this.logger.log(
+      `CSAT rating ${rating} submitted for ticket ${conversationId} by contact ${contactId}`,
+    );
 
     return { success: true };
   }

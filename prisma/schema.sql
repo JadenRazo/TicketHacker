@@ -34,6 +34,23 @@ COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access met
 -- Name: CannedResponseScope; Type: TYPE; Schema: public; Owner: tickethacker
 --
 
+--
+-- Name: ArticleStatus; Type: TYPE; Schema: public; Owner: tickethacker
+--
+
+CREATE TYPE public."ArticleStatus" AS ENUM (
+    'DRAFT',
+    'PUBLISHED',
+    'ARCHIVED'
+);
+
+
+ALTER TYPE public."ArticleStatus" OWNER TO tickethacker;
+
+--
+-- Name: CannedResponseScope; Type: TYPE; Schema: public; Owner: tickethacker
+--
+
 CREATE TYPE public."CannedResponseScope" AS ENUM (
     'PERSONAL',
     'TEAM',
@@ -189,6 +206,31 @@ CREATE TABLE public."Attachment" (
 
 
 ALTER TABLE public."Attachment" OWNER TO tickethacker;
+
+--
+-- Name: Article; Type: TABLE; Schema: public; Owner: tickethacker
+--
+
+CREATE TABLE public."Article" (
+    id text NOT NULL,
+    "tenantId" text NOT NULL,
+    title text NOT NULL,
+    content text NOT NULL,
+    slug text NOT NULL,
+    status public."ArticleStatus" DEFAULT 'DRAFT'::public."ArticleStatus" NOT NULL,
+    category text,
+    tags text[] DEFAULT ARRAY[]::text[],
+    "viewCount" integer DEFAULT 0 NOT NULL,
+    "helpfulCount" integer DEFAULT 0 NOT NULL,
+    "notHelpfulCount" integer DEFAULT 0 NOT NULL,
+    "authorId" text,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) without time zone NOT NULL,
+    embedding public.vector(1536)
+);
+
+
+ALTER TABLE public."Article" OWNER TO tickethacker;
 
 --
 -- Name: AutomationRule; Type: TABLE; Schema: public; Owner: tickethacker
@@ -422,6 +464,23 @@ CREATE TABLE public."Ticket" (
 ALTER TABLE public."Ticket" OWNER TO tickethacker;
 
 --
+-- Name: TicketRating; Type: TABLE; Schema: public; Owner: tickethacker
+--
+
+CREATE TABLE public."TicketRating" (
+    id text NOT NULL,
+    "tenantId" text NOT NULL,
+    "ticketId" text NOT NULL,
+    "contactId" text,
+    rating integer NOT NULL,
+    comment text,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public."TicketRating" OWNER TO tickethacker;
+
+--
 -- Name: User; Type: TABLE; Schema: public; Owner: tickethacker
 --
 
@@ -449,6 +508,14 @@ ALTER TABLE public."User" OWNER TO tickethacker;
 
 ALTER TABLE ONLY public."Attachment"
     ADD CONSTRAINT "Attachment_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Article Article_pkey; Type: CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."Article"
+    ADD CONSTRAINT "Article_pkey" PRIMARY KEY (id);
 
 
 --
@@ -548,11 +615,40 @@ ALTER TABLE ONLY public."Ticket"
 
 
 --
+-- Name: TicketRating TicketRating_pkey; Type: CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."TicketRating"
+    ADD CONSTRAINT "TicketRating_pkey" PRIMARY KEY (id);
+
+
+--
 -- Name: User User_pkey; Type: CONSTRAINT; Schema: public; Owner: tickethacker
 --
 
 ALTER TABLE ONLY public."User"
     ADD CONSTRAINT "User_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Article_tenantId_slug_key; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE UNIQUE INDEX "Article_tenantId_slug_key" ON public."Article" USING btree ("tenantId", slug);
+
+
+--
+-- Name: Article_tenantId_status_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Article_tenantId_status_idx" ON public."Article" USING btree ("tenantId", status);
+
+
+--
+-- Name: article_embedding_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX article_embedding_idx ON public."Article" USING ivfflat (embedding public.vector_cosine_ops) WITH (lists = 100);
 
 
 --
@@ -630,6 +726,36 @@ CREATE INDEX "Message_tenantId_idx" ON public."Message" USING btree ("tenantId")
 --
 
 CREATE INDEX "Contact_tenantId_channel_idx" ON public."Contact" USING btree ("tenantId", channel);
+
+
+--
+-- Name: TicketRating_ticketId_key; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE UNIQUE INDEX "TicketRating_ticketId_key" ON public."TicketRating" USING btree ("ticketId");
+
+
+--
+-- Name: TicketRating_tenantId_createdAt_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "TicketRating_tenantId_createdAt_idx" ON public."TicketRating" USING btree ("tenantId", "createdAt");
+
+
+--
+-- Name: Article Article_authorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."Article"
+    ADD CONSTRAINT "Article_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Article Article_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."Article"
+    ADD CONSTRAINT "Article_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -849,12 +975,34 @@ ALTER TABLE ONLY public."Ticket"
 
 
 --
+-- Name: TicketRating TicketRating_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."TicketRating"
+    ADD CONSTRAINT "TicketRating_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: TicketRating TicketRating_ticketId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."TicketRating"
+    ADD CONSTRAINT "TicketRating_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES public."Ticket"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- Name: User User_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
 --
 
 ALTER TABLE ONLY public."User"
     ADD CONSTRAINT "User_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+
+--
+-- Name: Article; Type: ROW SECURITY; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE public."Article" ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: Attachment; Type: ROW SECURITY; Schema: public; Owner: tickethacker
@@ -933,6 +1081,13 @@ ALTER TABLE public."Ticket" ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public."User" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: Article tenant_isolation; Type: POLICY; Schema: public; Owner: tickethacker
+--
+
+CREATE POLICY tenant_isolation ON public."Article" USING (("tenantId" = current_setting('app.current_tenant'::text, true))) WITH CHECK (("tenantId" = current_setting('app.current_tenant'::text, true)));
+
 
 --
 -- Name: Attachment tenant_isolation; Type: POLICY; Schema: public; Owner: tickethacker
@@ -1019,10 +1174,217 @@ CREATE POLICY tenant_isolation ON public."Ticket" USING (("tenantId" = current_s
 
 
 --
+-- Name: TicketRating tenant_isolation; Type: POLICY; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE public."TicketRating" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON public."TicketRating" USING (("tenantId" = current_setting('app.current_tenant'::text, true))) WITH CHECK (("tenantId" = current_setting('app.current_tenant'::text, true)));
+
+
+--
 -- Name: User tenant_isolation; Type: POLICY; Schema: public; Owner: tickethacker
 --
 
 CREATE POLICY tenant_isolation ON public."User" USING (("tenantId" = current_setting('app.current_tenant'::text, true))) WITH CHECK (("tenantId" = current_setting('app.current_tenant'::text, true)));
+
+
+--
+-- Name: Notification; Type: TABLE; Schema: public; Owner: tickethacker
+--
+
+CREATE TABLE public."Notification" (
+    id text NOT NULL,
+    "tenantId" text NOT NULL,
+    "userId" text NOT NULL,
+    type text NOT NULL,
+    title text NOT NULL,
+    body text NOT NULL,
+    "ticketId" text,
+    "isRead" boolean DEFAULT false NOT NULL,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public."Notification" OWNER TO tickethacker;
+
+
+--
+-- Name: Notification Notification_pkey; Type: CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."Notification"
+    ADD CONSTRAINT "Notification_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Notification_userId_isRead_createdAt_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Notification_userId_isRead_createdAt_idx" ON public."Notification" USING btree ("userId", "isRead", "createdAt");
+
+
+--
+-- Name: Notification_tenantId_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "Notification_tenantId_idx" ON public."Notification" USING btree ("tenantId");
+
+
+--
+-- Name: Notification Notification_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."Notification"
+    ADD CONSTRAINT "Notification_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Notification Notification_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."Notification"
+    ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Notification; Type: ROW SECURITY; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE public."Notification" ENABLE ROW LEVEL SECURITY;
+
+
+--
+-- Name: Notification tenant_isolation; Type: POLICY; Schema: public; Owner: tickethacker
+--
+
+CREATE POLICY tenant_isolation ON public."Notification" USING (("tenantId" = current_setting('app.current_tenant'::text, true))) WITH CHECK (("tenantId" = current_setting('app.current_tenant'::text, true)));
+
+
+--
+-- Name: WebhookEndpoint; Type: TABLE; Schema: public; Owner: tickethacker
+--
+
+CREATE TABLE public."WebhookEndpoint" (
+    id text NOT NULL,
+    "tenantId" text NOT NULL,
+    url text NOT NULL,
+    secret text NOT NULL,
+    events text[] DEFAULT ARRAY[]::text[],
+    "isActive" boolean DEFAULT true NOT NULL,
+    description text,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) without time zone NOT NULL
+);
+
+
+ALTER TABLE public."WebhookEndpoint" OWNER TO tickethacker;
+
+--
+-- Name: WebhookDelivery; Type: TABLE; Schema: public; Owner: tickethacker
+--
+
+CREATE TABLE public."WebhookDelivery" (
+    id text NOT NULL,
+    "tenantId" text NOT NULL,
+    "endpointId" text NOT NULL,
+    event text NOT NULL,
+    payload jsonb NOT NULL,
+    "statusCode" integer,
+    "responseBody" text,
+    success boolean DEFAULT false NOT NULL,
+    attempt integer DEFAULT 1 NOT NULL,
+    "deliveredAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public."WebhookDelivery" OWNER TO tickethacker;
+
+--
+-- Name: WebhookEndpoint WebhookEndpoint_pkey; Type: CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."WebhookEndpoint"
+    ADD CONSTRAINT "WebhookEndpoint_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: WebhookDelivery WebhookDelivery_pkey; Type: CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."WebhookDelivery"
+    ADD CONSTRAINT "WebhookDelivery_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: WebhookEndpoint_tenantId_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "WebhookEndpoint_tenantId_idx" ON public."WebhookEndpoint" USING btree ("tenantId");
+
+
+--
+-- Name: WebhookDelivery_endpointId_deliveredAt_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "WebhookDelivery_endpointId_deliveredAt_idx" ON public."WebhookDelivery" USING btree ("endpointId", "deliveredAt");
+
+
+--
+-- Name: WebhookDelivery_tenantId_idx; Type: INDEX; Schema: public; Owner: tickethacker
+--
+
+CREATE INDEX "WebhookDelivery_tenantId_idx" ON public."WebhookDelivery" USING btree ("tenantId");
+
+
+--
+-- Name: WebhookEndpoint WebhookEndpoint_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."WebhookEndpoint"
+    ADD CONSTRAINT "WebhookEndpoint_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: WebhookDelivery WebhookDelivery_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."WebhookDelivery"
+    ADD CONSTRAINT "WebhookDelivery_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: WebhookDelivery WebhookDelivery_endpointId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE ONLY public."WebhookDelivery"
+    ADD CONSTRAINT "WebhookDelivery_endpointId_fkey" FOREIGN KEY ("endpointId") REFERENCES public."WebhookEndpoint"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: WebhookEndpoint; Type: ROW SECURITY; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE public."WebhookEndpoint" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: WebhookDelivery; Type: ROW SECURITY; Schema: public; Owner: tickethacker
+--
+
+ALTER TABLE public."WebhookDelivery" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: WebhookEndpoint tenant_isolation; Type: POLICY; Schema: public; Owner: tickethacker
+--
+
+CREATE POLICY tenant_isolation ON public."WebhookEndpoint" USING (("tenantId" = current_setting('app.current_tenant'::text, true))) WITH CHECK (("tenantId" = current_setting('app.current_tenant'::text, true)));
+
+
+--
+-- Name: WebhookDelivery tenant_isolation; Type: POLICY; Schema: public; Owner: tickethacker
+--
+
+CREATE POLICY tenant_isolation ON public."WebhookDelivery" USING (("tenantId" = current_setting('app.current_tenant'::text, true))) WITH CHECK (("tenantId" = current_setting('app.current_tenant'::text, true)));
 
 
 --

@@ -304,6 +304,27 @@ export class EventsGateway
     );
   }
 
+  @OnEvent('notification.created')
+  handleNotificationCreated(payload: {
+    tenantId: string;
+    userId: string;
+    notification: any;
+  }) {
+    const { tenantId, userId, notification } = payload;
+
+    // Broadcast to the tenant room with userId so clients filter client-side.
+    // This avoids needing per-user socket rooms while still delivering targeted
+    // notifications over the existing tenant-scoped connection.
+    this.server.to(`tenant:${tenantId}`).emit('notification:new', {
+      userId,
+      notification,
+    });
+
+    this.logger.debug(
+      `Broadcast notification:new to tenant ${tenantId} for user ${userId} - notification ${notification.id}`,
+    );
+  }
+
   private async setAgentPresence(
     tenantId: string,
     userId: string,

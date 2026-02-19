@@ -1,10 +1,56 @@
 import { useQuery } from '@tanstack/react-query';
-import { getContacts } from '../lib/api';
+import { getContacts, getContactHealth, type HealthScore } from '../lib/api';
 import { useState, useEffect } from 'react';
+
+type SortField = 'name' | 'health' | 'tickets' | 'updated';
+type SortOrder = 'asc' | 'desc';
+
+function HealthBadge({ score, level }: { score: number; level: HealthScore['level'] }) {
+  const colorMap: Record<HealthScore['level'], string> = {
+    healthy: 'bg-green-500',
+    at_risk: 'bg-yellow-400',
+    critical: 'bg-red-500',
+  };
+
+  const labelMap: Record<HealthScore['level'], string> = {
+    healthy: 'Healthy',
+    at_risk: 'At Risk',
+    critical: 'Critical',
+  };
+
+  return (
+    <div className="flex items-center gap-1.5" title={`${score}/100 — ${labelMap[level]}`}>
+      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorMap[level]}`} />
+      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+        {score}
+      </span>
+    </div>
+  );
+}
+
+function ContactHealthCell({ contactId }: { contactId: string }) {
+  const { data: health, isLoading } = useQuery({
+    queryKey: ['contact-health', contactId],
+    queryFn: () => getContactHealth(contactId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (isLoading) {
+    return <span className="text-xs text-gray-400 dark:text-gray-500">...</span>;
+  }
+
+  if (!health) {
+    return <span className="text-xs text-gray-400 dark:text-gray-500">—</span>;
+  }
+
+  return <HealthBadge score={health.score} level={health.level} />;
+}
 
 export default function ContactsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [sortField, setSortField] = useState<SortField>('updated');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -20,6 +66,26 @@ export default function ContactsPage() {
   });
 
   const contacts = contactsData?.contacts || [];
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder(field === 'updated' ? 'desc' : 'asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <span className="ml-1 text-gray-300 dark:text-gray-600">↕</span>;
+    }
+    return (
+      <span className="ml-1 text-blue-500">
+        {sortOrder === 'asc' ? '↑' : '↓'}
+      </span>
+    );
+  };
 
   return (
     <div className="p-6">
@@ -53,8 +119,11 @@ export default function ContactsPage() {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Name
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('name')}
+                >
+                  Name <SortIcon field="name" />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Email
@@ -62,11 +131,23 @@ export default function ContactsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Channel
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Tickets
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('tickets')}
+                >
+                  Tickets <SortIcon field="tickets" />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Last Updated
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('health')}
+                >
+                  Health <SortIcon field="health" />
+                </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => handleSort('updated')}
+                >
+                  Last Updated <SortIcon field="updated" />
                 </th>
               </tr>
             </thead>
@@ -75,7 +156,7 @@ export default function ContactsPage() {
                 <tr key={contact.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                         {contact.avatarUrl ? (
                           <img
                             src={contact.avatarUrl}
@@ -99,6 +180,9 @@ export default function ContactsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                     {contact._count?.tickets || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <ContactHealthCell contactId={contact.id} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                     {new Date(contact.updatedAt).toLocaleDateString()}

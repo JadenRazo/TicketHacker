@@ -79,7 +79,7 @@ export class WidgetController {
   @Post('conversations/:conversationId/rate')
   async rate(
     @Param('conversationId') conversationId: string,
-    @Body() body: { token: string; rating: number },
+    @Body() body: { token: string; rating: number; comment?: string },
   ) {
     const payload = this.verifyWidgetToken(body.token);
     return this.widgetService.submitRating(
@@ -87,6 +87,7 @@ export class WidgetController {
       conversationId,
       payload.contactId,
       body.rating,
+      body.comment,
     );
   }
 

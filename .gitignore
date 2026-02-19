@@ -17,3 +17,4 @@ coverage/
 .claude*
 prisma/migrations/
 services/realtime/realtime
+uploads/

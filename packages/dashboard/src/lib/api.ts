@@ -1,5 +1,13 @@
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+export interface TicketRating {
+  id: string;
+  ticketId: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
@@ -48,10 +56,19 @@ export interface Ticket {
     name: string;
     description?: string | null;
   } | null;
+  rating?: TicketRating | null;
   messages?: Message[];
   _count?: {
     messages: number;
   };
+}
+
+export interface AttachmentInfo {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  url: string;
 }
 
 export interface Message {
@@ -77,6 +94,7 @@ export interface Message {
     name: string;
     email: string;
   } | null;
+  attachments?: AttachmentInfo[];
 }
 
 export interface User {
@@ -367,12 +385,40 @@ export async function createMessage(
     contentText?: string;
     contentHtml?: string;
     messageType: 'TEXT' | 'NOTE' | 'SYSTEM' | 'AI_SUGGESTION';
+    attachmentIds?: string[];
   }
 ): Promise<Message> {
   return fetchAPI<Message>(`/tickets/${ticketId}/messages`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+/**
+ * Uploads a file to the API and returns the created Attachment record.
+ * Does not set Content-Type — the browser sets it automatically with the
+ * correct multipart boundary when sending FormData.
+ */
+export async function uploadFile(file: File, messageId?: string): Promise<AttachmentInfo> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (messageId) formData.append('messageId', messageId);
+
+  const token = localStorage.getItem('accessToken');
+  const response = await fetch(`${API_URL}/uploads`, {
+    method: 'POST',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: response.statusText }));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+
+  return response.json();
 }
 
 export async function bulkUpdateTickets(
@@ -611,5 +657,450 @@ export async function updateCurrentUser(data: { name?: string }): Promise<User> 
   return fetchAPI<User>('/users/me', {
     method: 'PATCH',
     body: JSON.stringify(data),
+  });
+}
+
+export interface AnalyticsOverview {
+  ticketVolume: {
+    total: number;
+    open: number;
+    pending: number;
+    resolved: number;
+    closed: number;
+  };
+  avgResolutionTimeHours: number;
+  avgFirstResponseTimeMinutes: number;
+  slaComplianceRate: number;
+  csatAverage: number;
+  ticketsByChannel: Record<string, number>;
+  ticketsByPriority: Record<string, number>;
+}
+
+export interface AnalyticsTrends {
+  labels: string[];
+  created: number[];
+  resolved: number[];
+  avgResolutionHours: number[];
+}
+
+export interface AgentStat {
+  id: string;
+  name: string;
+  ticketsAssigned: number;
+  ticketsResolved: number;
+  avgResolutionHours: number;
+  avgFirstResponseMinutes: number;
+}
+
+export interface AnalyticsAgents {
+  agents: AgentStat[];
+}
+
+export interface TagStat {
+  tag: string;
+  count: number;
+}
+
+export interface AnalyticsTags {
+  tags: TagStat[];
+}
+
+export async function getAnalyticsOverview(period = '30d'): Promise<AnalyticsOverview> {
+  return fetchAPI<AnalyticsOverview>(`/analytics/overview?period=${period}`);
+}
+
+export async function getAnalyticsTrends(period = '30d', interval = 'day'): Promise<AnalyticsTrends> {
+  return fetchAPI<AnalyticsTrends>(`/analytics/trends?period=${period}&interval=${interval}`);
+}
+
+export async function getAnalyticsAgents(period = '30d'): Promise<AnalyticsAgents> {
+  return fetchAPI<AnalyticsAgents>(`/analytics/agents?period=${period}`);
+}
+
+export async function getAnalyticsTags(period = '30d', limit = 20): Promise<AnalyticsTags> {
+  return fetchAPI<AnalyticsTags>(`/analytics/tags?period=${period}&limit=${limit}`);
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge Base
+// ---------------------------------------------------------------------------
+
+export interface Article {
+  id: string;
+  tenantId: string;
+  title: string;
+  content: string;
+  slug: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  category?: string | null;
+  tags: string[];
+  viewCount: number;
+  helpfulCount: number;
+  notHelpfulCount: number;
+  authorId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author?: {
+    id: string;
+    name: string;
+    avatarUrl?: string | null;
+  } | null;
+}
+
+export async function getArticles(params?: {
+  status?: string;
+  category?: string;
+  search?: string;
+}): Promise<Article[]> {
+  const query = new URLSearchParams();
+  if (params?.status) query.append('status', params.status);
+  if (params?.category) query.append('category', params.category);
+  if (params?.search) query.append('search', params.search);
+  const qs = query.toString();
+  return fetchAPI<Article[]>(`/knowledge-base/articles${qs ? `?${qs}` : ''}`);
+}
+
+export async function createArticle(data: {
+  title: string;
+  content: string;
+  category?: string;
+  tags?: string[];
+}): Promise<Article> {
+  return fetchAPI<Article>('/knowledge-base/articles', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getArticle(id: string): Promise<Article> {
+  return fetchAPI<Article>(`/knowledge-base/articles/${id}`);
+}
+
+export async function updateArticle(
+  id: string,
+  data: Partial<Pick<Article, 'title' | 'content' | 'category' | 'tags' | 'status'>>,
+): Promise<Article> {
+  return fetchAPI<Article>(`/knowledge-base/articles/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteArticle(id: string): Promise<void> {
+  return fetchAPI<void>(`/knowledge-base/articles/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function publishArticle(id: string): Promise<Article> {
+  return fetchAPI<Article>(`/knowledge-base/articles/${id}/publish`, {
+    method: 'POST',
+  });
+}
+
+export async function archiveArticle(id: string): Promise<Article> {
+  return fetchAPI<Article>(`/knowledge-base/articles/${id}/archive`, {
+    method: 'POST',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Contact Health Scoring
+// ---------------------------------------------------------------------------
+
+export interface HealthScore {
+  score: number;
+  level: 'healthy' | 'at_risk' | 'critical';
+  factors: Record<string, { score: number; detail: string }>;
+  lastUpdated: string;
+}
+
+export interface HealthSummary {
+  total: number;
+  healthy: number;
+  atRisk: number;
+  critical: number;
+  avgScore: number;
+}
+
+export async function getContactHealth(contactId: string): Promise<HealthScore> {
+  return fetchAPI<HealthScore>(`/contacts/${contactId}/health`);
+}
+
+export async function getContactHealthSummary(): Promise<HealthSummary> {
+  return fetchAPI<HealthSummary>('/contacts/health-summary');
+}
+
+// ---------------------------------------------------------------------------
+// Ticket Routing
+// ---------------------------------------------------------------------------
+
+export interface RoutingRule {
+  conditions: {
+    channel?: string;
+    priority?: string;
+    tags?: string[];
+  };
+  teamId?: string;
+  assigneeId?: string;
+}
+
+export interface RoutingConfig {
+  routingEnabled: boolean;
+  routingRules: RoutingRule[];
+}
+
+export interface AgentLoad {
+  id: string;
+  name: string;
+  email: string;
+  openTickets: number;
+}
+
+export async function getRoutingConfig(): Promise<RoutingConfig> {
+  return fetchAPI<RoutingConfig>('/routing/config');
+}
+
+export async function updateRoutingConfig(
+  data: Partial<RoutingConfig>,
+): Promise<RoutingConfig> {
+  return fetchAPI<RoutingConfig>('/routing/config', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRoutingAgents(): Promise<AgentLoad[]> {
+  return fetchAPI<AgentLoad[]>('/routing/agents');
+}
+
+// --- Notifications ---
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  ticketId?: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export async function getNotifications(params?: {
+  unreadOnly?: boolean;
+  limit?: number;
+  cursor?: string;
+}): Promise<{ notifications: NotificationItem[]; nextCursor?: string }> {
+  const query = new URLSearchParams();
+  if (params?.unreadOnly) query.set('unreadOnly', 'true');
+  if (params?.limit) query.set('limit', params.limit.toString());
+  if (params?.cursor) query.set('cursor', params.cursor);
+  return fetchAPI<{ notifications: NotificationItem[]; nextCursor?: string }>(
+    `/notifications?${query.toString()}`,
+  );
+}
+
+export async function getUnreadNotificationCount(): Promise<{ count: number }> {
+  return fetchAPI<{ count: number }>('/notifications/unread-count');
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  return fetchAPI<void>(`/notifications/${id}/read`, { method: 'PATCH' });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  return fetchAPI<void>('/notifications/mark-all-read', { method: 'POST' });
+}
+
+// ---------------------------------------------------------------------------
+// CSAT
+// ---------------------------------------------------------------------------
+
+export interface CsatSummary {
+  average: number;
+  total: number;
+  distribution: Record<string, number>;
+  trend: Array<{ date: string; average: number; count: number }>;
+}
+
+export async function getCsatSummary(period = '30d'): Promise<CsatSummary> {
+  return fetchAPI<CsatSummary>(`/csat/summary?period=${period}`);
+}
+
+export async function getCsatRatings(period = '30d'): Promise<TicketRating[]> {
+  return fetchAPI<TicketRating[]>(`/csat/ratings?period=${period}`);
+}
+
+export async function getCsatRatingByTicket(ticketId: string): Promise<TicketRating | null> {
+  return fetchAPI<TicketRating | null>(`/csat/ratings/${ticketId}`);
+}
+
+// ----------------------------------------------------------------
+// Portal API – customer-facing endpoints using a separate token
+// ----------------------------------------------------------------
+
+export interface PortalContact {
+  id: string;
+  name: string;
+  email: string;
+  channel: string;
+}
+
+export interface PortalTicket {
+  id: string;
+  subject: string;
+  status: string;
+  priority: string;
+  channel: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  _count?: { messages: number };
+}
+
+export interface PortalMessage {
+  id: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+  contentText: string | null;
+  contentHtml: string | null;
+  messageType: string;
+  createdAt: string;
+}
+
+export interface PortalTicketDetail extends PortalTicket {
+  messages: PortalMessage[];
+}
+
+function portalFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('portalToken');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return fetch(`${API_URL}${endpoint}`, { ...options, headers }).then(async (res) => {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<T>;
+  });
+}
+
+export async function portalRequestLogin(
+  tenantSlug: string,
+  email: string,
+): Promise<{ message: string }> {
+  const res = await fetch(`${API_URL}/portal/${tenantSlug}/auth/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error('Failed to send login link');
+  return res.json();
+}
+
+export async function portalVerifyToken(
+  tenantSlug: string,
+  token: string,
+): Promise<{ contact: PortalContact; sessionToken: string }> {
+  const res = await fetch(`${API_URL}/portal/${tenantSlug}/auth/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err.message || 'Failed to verify login link');
+  }
+  return res.json();
+}
+
+export async function portalGetTickets(): Promise<PortalTicket[]> {
+  return portalFetch<PortalTicket[]>('/portal/tickets');
+}
+
+export async function portalGetTicket(ticketId: string): Promise<PortalTicketDetail> {
+  return portalFetch<PortalTicketDetail>(`/portal/tickets/${ticketId}`);
+}
+
+export async function portalReplyToTicket(
+  ticketId: string,
+  content: string,
+): Promise<PortalMessage> {
+  return portalFetch<PortalMessage>(`/portal/tickets/${ticketId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks
+// ---------------------------------------------------------------------------
+
+export interface WebhookEndpoint {
+  id: string;
+  url: string;
+  secret: string;
+  events: string[];
+  isActive: boolean;
+  description?: string | null;
+  createdAt: string;
+}
+
+export interface WebhookDeliveryItem {
+  id: string;
+  event: string;
+  statusCode?: number | null;
+  responseBody?: string | null;
+  success: boolean;
+  attempt: number;
+  deliveredAt: string;
+}
+
+export async function getWebhookEndpoints(): Promise<WebhookEndpoint[]> {
+  return fetchAPI<WebhookEndpoint[]>('/webhooks');
+}
+
+export async function createWebhookEndpoint(data: {
+  url: string;
+  events: string[];
+  description?: string;
+}): Promise<WebhookEndpoint> {
+  return fetchAPI<WebhookEndpoint>('/webhooks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateWebhookEndpoint(
+  id: string,
+  data: Partial<Pick<WebhookEndpoint, 'url' | 'events' | 'isActive' | 'description'>>,
+): Promise<WebhookEndpoint> {
+  return fetchAPI<WebhookEndpoint>(`/webhooks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteWebhookEndpoint(id: string): Promise<void> {
+  return fetchAPI<void>(`/webhooks/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getWebhookDeliveries(
+  endpointId: string,
+): Promise<WebhookDeliveryItem[]> {
+  return fetchAPI<WebhookDeliveryItem[]>(`/webhooks/${endpointId}/deliveries?limit=10`);
+}
+
+export async function retryWebhookDelivery(deliveryId: string): Promise<void> {
+  return fetchAPI<void>(`/webhooks/deliveries/${deliveryId}/retry`, {
+    method: 'POST',
   });
 }

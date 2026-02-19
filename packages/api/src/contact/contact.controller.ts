@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ContactService } from './contact.service';
+import { HealthService } from './health.service';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -17,7 +18,10 @@ import { ContactFiltersDto } from './dto/contact-filters.dto';
 @UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard)
 @Roles('AGENT')
 export class ContactController {
-  constructor(private contactService: ContactService) {}
+  constructor(
+    private contactService: ContactService,
+    private healthService: HealthService,
+  ) {}
 
   @Get()
   findAll(
@@ -32,11 +36,24 @@ export class ContactController {
     );
   }
 
+  @Get('health-summary')
+  getHealthSummary(@CurrentUser('tenantId') tenantId: string) {
+    return this.healthService.getHealthSummary(tenantId);
+  }
+
   @Get(':id')
   findOne(
     @CurrentUser('tenantId') tenantId: string,
     @Param('id') id: string,
   ) {
     return this.contactService.findOne(tenantId, id);
+  }
+
+  @Get(':id/health')
+  getHealth(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.healthService.calculateHealthScore(tenantId, id);
   }
 }

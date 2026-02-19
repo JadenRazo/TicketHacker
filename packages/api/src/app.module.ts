@@ -25,6 +25,14 @@ import { TelegramModule } from './telegram/telegram.module';
 import { MessageBusModule } from './message-bus/message-bus.module';
 import { OpenclawModule } from './openclaw/openclaw.module';
 import { HealthModule } from './health/health.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { WebhookModule } from './webhook/webhook.module';
+import { CsatModule } from './csat/csat.module';
+import { NotificationModule } from './notification/notification.module';
+import { UploadModule } from './upload/upload.module';
+import { PortalModule } from './portal/portal.module';
+import { RoutingModule } from './routing/routing.module';
 import { LoggerModule } from 'nestjs-pino';
 
 @Module({
@@ -62,6 +70,14 @@ import { LoggerModule } from 'nestjs-pino';
     MessageBusModule,
     OpenclawModule,
     HealthModule,
+    AnalyticsModule,
+    KnowledgeBaseModule,
+    WebhookModule,
+    CsatModule,
+    NotificationModule,
+    UploadModule,
+    PortalModule,
+    RoutingModule,
   ],
   providers: [
     {

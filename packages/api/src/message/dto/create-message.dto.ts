@@ -1,4 +1,4 @@
-import { IsString, MaxLength, IsEnum, IsOptional } from 'class-validator';
+import { IsString, MaxLength, IsEnum, IsOptional, IsArray, IsUUID } from 'class-validator';
 import { MessageType } from '@prisma/client';
 
 export class CreateMessageDto {
@@ -14,4 +14,9 @@ export class CreateMessageDto {
   @IsEnum(MessageType)
   @IsOptional()
   messageType?: MessageType = MessageType.TEXT;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  attachmentIds?: string[];
 }
