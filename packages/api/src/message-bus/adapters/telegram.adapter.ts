@@ -26,11 +26,11 @@ export class TelegramAdapter implements ChannelAdapter {
   async sendOutbound(
     message: UnifiedMessage,
   ): Promise<string | null> {
-    await this.telegramService.sendOutbound(
+    const result = await this.telegramService.sendOutbound(
       message.ticketId,
       message.contentText,
     );
-    return null;
+    return result?.messageId || null;
   }
 
   async validateConnection(config: Record<string, any>): Promise<boolean> {

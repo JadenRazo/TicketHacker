@@ -1,6 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OpenclawService } from './openclaw.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -21,6 +22,7 @@ export class OpenclawAgentProcessor extends WorkerHost {
   constructor(
     private openclawService: OpenclawService,
     private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
   ) {
     super();
   }
@@ -77,6 +79,17 @@ export class OpenclawAgentProcessor extends WorkerHost {
             },
           });
 
+          await this.openclawService.appendAiActivity(ticketId, tenantId, {
+            action: 'triage',
+            result: {
+              action: result.action,
+              confidence: result.confidence,
+              summary: result.summary,
+            },
+            triggeredBy: 'auto-triage',
+            toolCallCount: result.toolCalls.length,
+          });
+
           this.logger.log(
             `Triage completed for ticket ${ticketId}: ${result.action} (confidence: ${result.confidence})`,
           );
@@ -93,6 +106,17 @@ export class OpenclawAgentProcessor extends WorkerHost {
               customerMessage || '',
               { model: agentModel, confidenceThreshold: threshold },
             );
+
+            await this.openclawService.appendAiActivity(ticketId, tenantId, {
+              action: 'draft-reply',
+              result: {
+                action: result.action,
+                confidence: result.confidence,
+                summary: result.summary,
+              },
+              triggeredBy: 'auto-reply',
+              toolCallCount: result.toolCalls.length,
+            });
 
             this.logger.log(
               `Auto-reply for ticket ${ticketId}: ${result.action} (confidence: ${result.confidence})`,
@@ -120,6 +144,17 @@ export class OpenclawAgentProcessor extends WorkerHost {
                 },
               });
             }
+
+            await this.openclawService.appendAiActivity(ticketId, tenantId, {
+              action: 'draft-reply',
+              result: {
+                action: result.action,
+                confidence: result.confidence,
+                summary: result.summary,
+              },
+              triggeredBy: 'auto-reply',
+              toolCallCount: result.toolCalls.length,
+            });
 
             this.logger.log(
               `Draft reply generated for ticket ${ticketId} (confidence: ${result.confidence})`,
@@ -149,6 +184,17 @@ export class OpenclawAgentProcessor extends WorkerHost {
             },
           });
 
+          await this.openclawService.appendAiActivity(ticketId, tenantId, {
+            action: 'resolve',
+            result: {
+              action: result.action,
+              confidence: result.confidence,
+              summary: result.summary,
+            },
+            triggeredBy: 'auto-reply',
+            toolCallCount: result.toolCalls.length,
+          });
+
           this.logger.log(
             `Resolve attempt for ticket ${ticketId}: ${result.action}`,
           );
@@ -162,8 +208,43 @@ export class OpenclawAgentProcessor extends WorkerHost {
             { model: agentModel },
           );
 
+          if (result.draftReply && result.confidence >= threshold) {
+            const suggestion = await this.prisma.message.create({
+              data: {
+                tenantId,
+                ticketId,
+                direction: 'OUTBOUND',
+                contentText: result.draftReply,
+                messageType: 'AI_SUGGESTION',
+                metadata: {
+                  aiGenerated: true,
+                  confidence: result.confidence,
+                  summary: result.summary,
+                  toolCalls: result.toolCalls.length,
+                },
+              },
+            });
+
+            this.eventEmitter.emit('message.created', {
+              tenantId,
+              ticketId,
+              message: suggestion,
+            });
+          }
+
+          await this.openclawService.appendAiActivity(ticketId, tenantId, {
+            action: 'draft-reply',
+            result: {
+              action: result.action,
+              confidence: result.confidence,
+              summary: result.summary,
+            },
+            triggeredBy: 'copilot',
+            toolCallCount: result.toolCalls.length,
+          });
+
           this.logger.log(
-            `Copilot suggestion generated for ticket ${ticketId}`,
+            `Copilot suggestion generated for ticket ${ticketId} (confidence: ${result.confidence})`,
           );
           return result;
         }

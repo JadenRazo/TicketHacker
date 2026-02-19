@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { OpenclawService } from './openclaw.service';
 
 @Injectable()
 export class OpenclawListener {
@@ -101,6 +102,45 @@ export class OpenclawListener {
           `Queued OpenClaw ${action} for widget ticket ${ticketId}`,
         );
       } else if (agentMode === 'autonomous') {
+        if (!OpenclawService.isWithinBusinessHours(settings)) {
+          // Outside business hours: degrade to copilot mode
+          await this.openclawQueue.add(
+            'copilot-suggest',
+            {
+              action: 'copilot-suggest',
+              ticketId,
+              tenantId,
+              customerMessage: message.contentText,
+            },
+            {
+              attempts: 2,
+              backoff: { type: 'exponential', delay: 3000 },
+            },
+          );
+          this.logger.log(
+            `Outside business hours: queued copilot-suggest instead of auto-reply for ticket ${ticketId}`,
+          );
+          return;
+        }
+
+        const recentAiReplies = await this.prisma.message.count({
+          where: {
+            ticketId,
+            tenantId,
+            messageType: { in: ['AI_SUGGESTION', 'TEXT'] },
+            metadata: { path: ['aiGenerated'], equals: true },
+            createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+          },
+        });
+
+        const rateLimit = settings.openclawRateLimit || 5;
+        if (recentAiReplies >= rateLimit) {
+          this.logger.warn(
+            `Rate limit: skipping auto-reply for ticket ${ticketId}, ${recentAiReplies} AI replies in last hour`,
+          );
+          return;
+        }
+
         await this.openclawQueue.add(
           'auto-reply',
           {
@@ -118,6 +158,27 @@ export class OpenclawListener {
         this.logger.log(
           `Queued OpenClaw auto-reply for ticket ${ticketId}`,
         );
+      } else if (agentMode === 'copilot') {
+        const shouldAutoSuggest = settings.openclawAutoSuggest !== false; // default true
+        if (shouldAutoSuggest) {
+          await this.openclawQueue.add(
+            'copilot-suggest',
+            {
+              action: 'copilot-suggest',
+              ticketId,
+              tenantId,
+              customerMessage: message.contentText,
+            },
+            {
+              attempts: 2,
+              backoff: { type: 'exponential', delay: 3000 },
+              priority: 10,
+            },
+          );
+          this.logger.log(
+            `Queued OpenClaw copilot suggestion for ticket ${ticketId}`,
+          );
+        }
       }
     } catch (error) {
       this.logger.error(

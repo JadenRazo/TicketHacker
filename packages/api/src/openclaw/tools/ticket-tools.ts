@@ -79,7 +79,7 @@ export const TICKET_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'search_tickets',
-      description: 'Search for related or similar tickets',
+      description: 'Search for related or similar tickets by subject or message content',
       parameters: {
         type: 'object',
         properties: {
@@ -127,6 +127,91 @@ export const TICKET_TOOLS = [
           },
         },
         required: ['ticketId', 'reason'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_canned_responses',
+      description: 'Retrieve saved canned responses, optionally filtered by a search query',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Optional search term to filter canned responses by title or content',
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'search_knowledge_base',
+      description:
+        'Search previously resolved ticket replies to find relevant answers from past support interactions',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Search term to find relevant past replies',
+          },
+          limit: {
+            type: 'number',
+            description: 'Max results to return (default 5)',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'set_tags',
+      description: 'Set or replace the tags on a ticket',
+      parameters: {
+        type: 'object',
+        properties: {
+          ticketId: { type: 'string' },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of tag strings to apply to the ticket',
+          },
+        },
+        required: ['ticketId', 'tags'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'assign_to_team',
+      description: 'Assign a ticket to a specific team',
+      parameters: {
+        type: 'object',
+        properties: {
+          ticketId: { type: 'string' },
+          teamId: { type: 'string', description: 'The ID of the team to assign the ticket to' },
+        },
+        required: ['ticketId', 'teamId'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_teams',
+      description: 'List all teams available in the current tenant',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
       },
     },
   },
@@ -265,7 +350,14 @@ export async function executeToolCall(
       const limit = args.limit || 5;
       const where: any = {
         tenantId,
-        subject: { contains: args.query, mode: 'insensitive' },
+        OR: [
+          { subject: { contains: args.query, mode: 'insensitive' } },
+          {
+            messages: {
+              some: { contentText: { contains: args.query, mode: 'insensitive' } },
+            },
+          },
+        ],
       };
       if (args.status) where.status = args.status;
 
@@ -280,10 +372,27 @@ export async function executeToolCall(
           priority: true,
           createdAt: true,
           tags: true,
+          messages: {
+            where: { contentText: { contains: args.query, mode: 'insensitive' } },
+            take: 1,
+            orderBy: { createdAt: 'asc' },
+            select: { contentText: true },
+          },
         },
       });
 
-      return JSON.stringify({ tickets });
+      return JSON.stringify({
+        tickets: tickets.map((t) => ({
+          id: t.id,
+          subject: t.subject,
+          status: t.status,
+          priority: t.priority,
+          createdAt: t.createdAt,
+          tags: t.tags,
+          matchingSnippet:
+            t.messages.length > 0 ? t.messages[0].contentText.slice(0, 200) : undefined,
+        })),
+      });
     }
 
     case 'get_contact_history': {
@@ -350,6 +459,117 @@ export async function executeToolCall(
         escalated: true,
         reason: args.reason,
       });
+    }
+
+    case 'get_canned_responses': {
+      const where: any = { tenantId };
+
+      if (args.query) {
+        where.OR = [
+          { title: { contains: args.query, mode: 'insensitive' } },
+          { content: { contains: args.query, mode: 'insensitive' } },
+        ];
+      }
+
+      const responses = await prisma.cannedResponse.findMany({
+        where,
+        orderBy: { usageCount: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          shortcut: true,
+        },
+      });
+
+      return JSON.stringify({ cannedResponses: responses });
+    }
+
+    case 'search_knowledge_base': {
+      const limit = args.limit || 5;
+
+      const messages = await prisma.message.findMany({
+        where: {
+          tenantId,
+          contentText: { contains: args.query, mode: 'insensitive' },
+          messageType: 'TEXT',
+          direction: 'OUTBOUND',
+          ticket: { status: 'RESOLVED' },
+        },
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          contentText: true,
+          createdAt: true,
+          ticket: {
+            select: {
+              id: true,
+              subject: true,
+            },
+          },
+        },
+      });
+
+      return JSON.stringify({
+        results: messages.map((m) => ({
+          messageId: m.id,
+          ticketId: m.ticket.id,
+          ticketSubject: m.ticket.subject,
+          snippet: m.contentText.slice(0, 300),
+          createdAt: m.createdAt,
+        })),
+      });
+    }
+
+    case 'set_tags': {
+      const updated = await prisma.ticket.update({
+        where: { id: args.ticketId },
+        data: { tags: args.tags },
+      });
+
+      eventEmitter.emit('ticket.updated', { tenantId, ticket: updated });
+
+      return JSON.stringify({
+        success: true,
+        ticketId: updated.id,
+        tags: updated.tags,
+      });
+    }
+
+    case 'assign_to_team': {
+      const team = await prisma.team.findFirst({
+        where: { id: args.teamId, tenantId },
+      });
+
+      if (!team) return JSON.stringify({ error: 'Team not found' });
+
+      const updated = await prisma.ticket.update({
+        where: { id: args.ticketId },
+        data: { teamId: args.teamId },
+      });
+
+      eventEmitter.emit('ticket.updated', { tenantId, ticket: updated });
+
+      return JSON.stringify({
+        success: true,
+        ticketId: updated.id,
+        teamId: updated.teamId,
+      });
+    }
+
+    case 'get_teams': {
+      const teams = await prisma.team.findMany({
+        where: { tenantId },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+      });
+
+      return JSON.stringify({ teams });
     }
 
     default:

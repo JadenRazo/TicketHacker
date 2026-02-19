@@ -71,6 +71,18 @@ export default function Layout() {
               Contacts
             </Link>
             <Link
+              to="/canned-responses"
+              className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Canned Responses
+            </Link>
+            <Link
+              to="/automations"
+              className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Automations
+            </Link>
+            <Link
               to="/settings"
               className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             >

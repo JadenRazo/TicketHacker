@@ -42,6 +42,15 @@ export class UserController {
     return this.userService.findAll(tenantId, cursor, limit);
   }
 
+  @Patch('me')
+  updateCurrentUser(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.userService.update(tenantId, userId, { name: dto.name });
+  }
+
   @Get(':id')
   getUser(
     @CurrentUser('tenantId') tenantId: string,

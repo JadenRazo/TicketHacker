@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength, IsIn } from 'class-validator';
+import { IsOptional, IsString, MaxLength, IsIn, IsObject } from 'class-validator';
 
 export class AgentActionDto {
   @IsOptional()
@@ -7,21 +7,26 @@ export class AgentActionDto {
   model?: string;
 }
 
+export type WebhookEventType =
+  | 'agent.completed'
+  | 'agent.failed'
+  | 'agent.reply_sent'
+  | 'agent.escalated';
+
 export class WebhookInboundDto {
   @IsString()
-  @MaxLength(100)
-  event: string;
+  @IsIn(['agent.completed', 'agent.failed', 'agent.reply_sent', 'agent.escalated'])
+  event: WebhookEventType;
 
-  @IsOptional()
   @IsString()
   @MaxLength(255)
-  ticketId?: string;
+  ticketId: string;
 
-  @IsOptional()
   @IsString()
   @MaxLength(255)
-  tenantId?: string;
+  tenantId: string;
 
   @IsOptional()
+  @IsObject()
   payload?: Record<string, any>;
 }

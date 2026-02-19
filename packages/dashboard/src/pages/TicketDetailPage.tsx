@@ -13,6 +13,8 @@ import {
   snoozeTicket,
   mergeTickets,
   getTickets,
+  getCustomFieldDefinitions,
+  type CustomFieldDefinition,
   aiTriageTicket,
   aiDraftReply,
   aiResolveTicket,
@@ -38,6 +40,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import clsx from 'clsx';
+import AiResultPanel from '../components/AiResultPanel';
+import AiActivityTimeline from '../components/AiActivityTimeline';
 
 const STATUS_OPTIONS = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'];
 const PRIORITY_OPTIONS = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -62,6 +66,7 @@ export default function TicketDetailPage() {
   const [showTagInput, setShowTagInput] = useState(false);
   const [aiResult, setAiResult] = useState<AgentResult | null>(null);
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [showAiActivity, setShowAiActivity] = useState(false);
 
   const {
     data: ticket,
@@ -101,6 +106,12 @@ export default function TicketDetailPage() {
   const { data: macros } = useQuery({
     queryKey: ['macros'],
     queryFn: getMacros,
+  });
+
+  const { data: customFieldDefs } = useQuery({
+    queryKey: ['custom-field-definitions'],
+    queryFn: getCustomFieldDefinitions,
+    retry: false,
   });
 
   const { data: mergeSearchResults } = useQuery({
@@ -808,6 +819,76 @@ export default function TicketDetailPage() {
             )}
           </div>
 
+          {customFieldDefs && customFieldDefs.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Custom Fields
+              </label>
+              <div className="space-y-3">
+                {customFieldDefs.map((field: CustomFieldDefinition) => {
+                  const currentValue = (ticket.customFields as Record<string, any>)?.[field.id] ?? '';
+                  return (
+                    <div key={field.id}>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        {field.name}{field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                      </label>
+                      {field.fieldType === 'BOOLEAN' ? (
+                        <button
+                          onClick={() =>
+                            updateTicketMutation.mutate({
+                              customFields: { ...(ticket.customFields as Record<string, any>), [field.id]: !currentValue },
+                            })
+                          }
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            currentValue ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                              currentValue ? 'translate-x-4.5' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                      ) : field.fieldType === 'DROPDOWN' ? (
+                        <select
+                          value={currentValue}
+                          onChange={(e) =>
+                            updateTicketMutation.mutate({
+                              customFields: { ...(ticket.customFields as Record<string, any>), [field.id]: e.target.value },
+                            })
+                          }
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        >
+                          <option value="">Select...</option>
+                          {(Array.isArray(field.options) ? field.options : (field.options as any)?.choices || []).map(
+                            (opt: string) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            )
+                          )}
+                        </select>
+                      ) : (
+                        <input
+                          type={field.fieldType === 'NUMBER' ? 'number' : field.fieldType === 'DATE' ? 'date' : 'text'}
+                          value={currentValue}
+                          onChange={(e) =>
+                            updateTicketMutation.mutate({
+                              customFields: {
+                                ...(ticket.customFields as Record<string, any>),
+                                [field.id]: field.fieldType === 'NUMBER' ? Number(e.target.value) : e.target.value,
+                              },
+                            })
+                          }
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          placeholder={`Enter ${field.name.toLowerCase()}`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {ticket.slaDeadline && (
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -944,60 +1025,31 @@ export default function TicketDetailPage() {
             </div>
 
             {showAiPanel && aiResult && (
-              <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-purple-700 dark:text-purple-300 uppercase">
-                    {aiResult.action}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-purple-600 dark:text-purple-400">
-                      {(aiResult.confidence * 100).toFixed(0)}% confidence
-                    </span>
-                    <button
-                      onClick={() => setShowAiPanel(false)}
-                      className="text-purple-400 hover:text-purple-600 dark:hover:text-purple-200 text-xs"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-                <p className="text-sm text-purple-800 dark:text-purple-200">
-                  {aiResult.summary}
-                </p>
-                {aiResult.draftReply && (
-                  <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-purple-100 dark:border-purple-900">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                      Draft Reply
-                    </p>
-                    <p className="text-sm text-gray-800 dark:text-gray-200">
-                      {aiResult.draftReply}
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => {
-                          if (editor && aiResult.draftReply) {
-                            editor.commands.setContent(aiResult.draftReply);
-                          }
-                        }}
-                        className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                      >
-                        Use Reply
-                      </button>
-                      <button
-                        onClick={() => setShowAiPanel(false)}
-                        className="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {aiResult.toolCalls.length > 0 && (
-                  <p className="mt-1 text-xs text-purple-500 dark:text-purple-400">
-                    {aiResult.toolCalls.length} tool call{aiResult.toolCalls.length !== 1 ? 's' : ''} executed
-                  </p>
-                )}
-              </div>
+              <AiResultPanel
+                result={aiResult}
+                ticketId={id!}
+                onUseReply={(draft) => {
+                  if (editor) {
+                    editor.commands.setContent(draft);
+                    editor.commands.focus();
+                  }
+                }}
+                onDismiss={() => setShowAiPanel(false)}
+              />
+            )}
+          </div>
+
+          {/* AI Activity Log */}
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setShowAiActivity(!showAiActivity)}
+              className="flex items-center justify-between w-full text-sm font-semibold text-gray-900 dark:text-white mb-2"
+            >
+              <span>AI Activity</span>
+              <span className="text-xs text-gray-500">{showAiActivity ? '−' : '+'}</span>
+            </button>
+            {showAiActivity && (
+              <AiActivityTimeline metadata={ticket.metadata} />
             )}
           </div>
         </div>

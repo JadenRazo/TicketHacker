@@ -6,6 +6,8 @@ import TicketListPage from './pages/TicketListPage';
 import TicketDetailPage from './pages/TicketDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import ContactsPage from './pages/ContactsPage';
+import CannedResponsesPage from './pages/CannedResponsesPage';
+import AutomationsPage from './pages/AutomationsPage';
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
           <Route path="/tickets/:id" element={<TicketDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/canned-responses" element={<CannedResponsesPage />} />
+          <Route path="/automations" element={<AutomationsPage />} />
           <Route path="*" element={<Navigate to="/tickets" replace />} />
         </Route>
       </Route>

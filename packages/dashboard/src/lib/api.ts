@@ -127,6 +127,17 @@ export interface SavedView {
   filters: Record<string, any>;
 }
 
+export interface AutomationRule {
+  id: string;
+  tenantId: string;
+  name: string;
+  conditions: Record<string, any>;
+  actions: Record<string, any>;
+  isActive: boolean;
+  priority: number;
+  createdAt: string;
+}
+
 export interface Macro {
   id: string;
   tenantId: string;
@@ -137,6 +148,16 @@ export interface Macro {
   ownerId?: string | null;
   teamId?: string | null;
   usageCount: number;
+  createdAt: string;
+}
+
+export interface CustomFieldDefinition {
+  id: string;
+  tenantId: string;
+  name: string;
+  fieldType: 'TEXT' | 'NUMBER' | 'DROPDOWN' | 'DATE' | 'BOOLEAN';
+  options?: Record<string, any> | null;
+  isRequired: boolean;
   createdAt: string;
 }
 
@@ -413,6 +434,39 @@ export async function getCannedResponses(): Promise<CannedResponse[]> {
   return fetchAPI<CannedResponse[]>('/canned-responses');
 }
 
+export async function createCannedResponse(data: {
+  title: string;
+  content: string;
+  shortcut?: string;
+  scope: string;
+}): Promise<CannedResponse> {
+  return fetchAPI<CannedResponse>('/canned-responses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCannedResponse(
+  id: string,
+  data: Partial<{
+    title: string;
+    content: string;
+    shortcut: string | null;
+    scope: string;
+  }>
+): Promise<CannedResponse> {
+  return fetchAPI<CannedResponse>(`/canned-responses/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCannedResponse(id: string): Promise<void> {
+  return fetchAPI<void>(`/canned-responses/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getSavedViews(): Promise<SavedView[]> {
   return fetchAPI<SavedView[]>('/saved-views');
 }
@@ -426,6 +480,10 @@ export async function executeMacro(macroId: string, ticketId: string): Promise<T
     method: 'POST',
     body: JSON.stringify({ ticketId }),
   });
+}
+
+export async function getCustomFieldDefinitions(): Promise<CustomFieldDefinition[]> {
+  return fetchAPI<CustomFieldDefinition[]>('/custom-fields');
 }
 
 export async function getTenant(): Promise<Tenant> {
@@ -459,6 +517,8 @@ export interface AgentResult {
   summary: string;
   toolCalls: Array<{ tool: string; args: any; result: any }>;
   draftReply?: string;
+  sentiment?: string;
+  suggestedTags?: string[];
 }
 
 export async function getOpenClawStatus(): Promise<OpenClawStatus> {
@@ -502,5 +562,54 @@ export async function aiSummarizeTicket(
   return fetchAPI<{ result: AgentResult }>(`/openclaw/agent/summarize/${ticketId}`, {
     method: 'POST',
     body: JSON.stringify({ model }),
+  });
+}
+
+export async function aiSubmitFeedback(
+  ticketId: string,
+  data: { action: string; rating: 'positive' | 'negative' }
+): Promise<void> {
+  return fetchAPI<void>(`/openclaw/agent/feedback/${ticketId}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getAutomationRules(): Promise<AutomationRule[]> {
+  return fetchAPI<AutomationRule[]>('/automations');
+}
+
+export async function createAutomationRule(
+  data: Pick<AutomationRule, 'name' | 'conditions' | 'actions'> & {
+    isActive?: boolean;
+    priority?: number;
+  }
+): Promise<AutomationRule> {
+  return fetchAPI<AutomationRule>('/automations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAutomationRule(
+  id: string,
+  data: Partial<Pick<AutomationRule, 'name' | 'conditions' | 'actions' | 'isActive' | 'priority'>>
+): Promise<AutomationRule> {
+  return fetchAPI<AutomationRule>(`/automations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAutomationRule(id: string): Promise<{ message: string }> {
+  return fetchAPI<{ message: string }>(`/automations/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function updateCurrentUser(data: { name?: string }): Promise<User> {
+  return fetchAPI<User>('/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   });
 }

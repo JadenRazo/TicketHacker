@@ -35,7 +35,7 @@ export class EmailAdapter implements ChannelAdapter {
       message.ticketId,
       message.contentText,
     );
-    return null;
+    return `email-${message.ticketId}-${Date.now()}`;
   }
 
   async validateConnection(config: Record<string, any>): Promise<boolean> {
