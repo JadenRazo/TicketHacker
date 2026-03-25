@@ -92,7 +92,7 @@ services:
     container_name: tickethacker-realtime
     restart: unless-stopped
     ports:
-      - "3002:3002"
+      - "127.0.0.1:3099:3002"
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379

@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: tickethacker
       POSTGRES_DB: tickethacker
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     container_name: tickethacker-redis
     restart: unless-stopped
     ports:
-      - "6381:6379"
+      - "127.0.0.1:6381:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -36,8 +36,8 @@ services:
     container_name: tickethacker-mailhog
     restart: unless-stopped
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
   realtime:
     build:
@@ -46,7 +46,7 @@ services:
     container_name: tickethacker-realtime
     restart: unless-stopped
     ports:
-      - "3002:3002"
+      - "127.0.0.1:3099:3002"
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
