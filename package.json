@@ -1,0 +1,27 @@
+{
+  "name": "tickethacker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant ticketing SaaS",
+  "scripts": {
+    "dev": "pnpm --filter @tickethacker/api run start:dev",
+    "build": "pnpm --filter @tickethacker/api run build",
+    "seed": "tsx scripts/seed.ts",
+    "db:generate": "pnpm --filter @tickethacker/api run db:generate",
+    "db:push": "pnpm --filter @tickethacker/api run db:push",
+    "db:studio": "pnpm --filter @tickethacker/api run db:studio",
+    "dashboard": "pnpm --filter @tickethacker/dashboard run dev",
+    "widget": "pnpm --filter @tickethacker/widget run dev"
+  },
+  "devDependencies": {
+    "prisma": "6.19.2"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.2",
+    "@types/node": "^22.19.11",
+    "argon2": "^0.44.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

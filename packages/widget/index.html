@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TicketHacker Widget Test Page</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 {
+      color: #0066FF;
+      margin-bottom: 16px;
+    }
+    .info {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .info h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    .info ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .info li {
+      margin: 8px 0;
+    }
+    code {
+      background: #e0e0e0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 14px;
+    }
+    .note {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 16px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .note strong {
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+  <h1>TicketHacker Widget Test Page</h1>
+
+  <p>The chat widget should appear in the bottom-right corner of the screen.</p>
+
+  <div class="info">
+    <h2>Widget Features:</h2>
+    <ul>
+      <li>Click the chat bubble to open/close the widget</li>
+      <li>Fill out the pre-chat form to start a conversation</li>
+      <li>Send messages and receive real-time responses</li>
+      <li>See typing indicators when agents are responding</li>
+      <li>Rate your experience when the conversation is resolved</li>
+      <li>Conversation persists across page reloads using localStorage</li>
+    </ul>
+  </div>
+
+  <div class="info">
+    <h2>Testing Instructions:</h2>
+    <ul>
+      <li>Make sure the backend API is running on <code>http://localhost:3001</code></li>
+      <li>Replace <code>TENANT_ID_HERE</code> below with an actual tenant ID from your database</li>
+      <li>The widget will automatically connect to Socket.IO for real-time updates</li>
+      <li>Open the browser console to see any errors or connection status</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <strong>Note:</strong> Update the <code>data-tenant-id</code> attribute in the script tag below with a valid tenant ID from your database before testing.
+  </div>
+
+  <h2>API Endpoints Being Used:</h2>
+  <ul>
+    <li><code>POST /api/widget/init</code> - Initialize widget configuration</li>
+    <li><code>POST /api/widget/conversations</code> - Create new conversation</li>
+    <li><code>GET /api/widget/conversations/:id/messages</code> - Fetch message history</li>
+    <li><code>POST /api/widget/conversations/:id/messages</code> - Send message</li>
+    <li><code>POST /api/widget/conversations/:id/typing</code> - Send typing status</li>
+    <li><code>POST /api/widget/conversations/:id/rate</code> - Submit rating</li>
+  </ul>
+
+  <!-- TicketHacker Widget -->
+  <script type="module" src="/src/main.tsx" data-tenant-id="TENANT_ID_HERE"></script>
+</body>
+</html>

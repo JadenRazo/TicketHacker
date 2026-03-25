@@ -1,0 +1,17 @@
+name: Notify Profile Repo
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger LOC update
+        run: |
+          curl -sf -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.PROFILE_DISPATCH_TOKEN }}" \
+            https://api.github.com/repos/JadenRazo/JadenRazo/dispatches \
+            -d '{"event_type":"loc-update"}'

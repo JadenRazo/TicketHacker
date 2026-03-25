@@ -1,0 +1,392 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  OnGatewayInit,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  ConnectedSocket,
+  MessageBody,
+} from '@nestjs/websockets';
+import { Server } from 'socket.io';
+import type { Socket } from 'socket.io';
+import { OnEvent } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { createAdapter } from '@socket.io/redis-adapter';
+import Redis from 'ioredis';
+import { Logger } from '@nestjs/common';
+
+interface SocketData {
+  userId: string;
+  tenantId: string;
+  userName: string;
+}
+
+type SocketWithData = Socket & {
+  data: SocketData;
+}
+
+interface JwtPayload {
+  sub: string;
+  tenantId: string;
+  email: string;
+  role: string;
+}
+
+@WebSocketGateway({
+  cors: {
+    origin: [
+      process.env.APP_URL || 'http://localhost:5173',
+      process.env.WIDGET_URL || 'http://localhost:5174',
+    ],
+    credentials: true,
+  },
+  namespace: '/',
+})
+export class EventsGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
+  @WebSocketServer()
+  server: Server;
+
+  private readonly logger = new Logger(EventsGateway.name);
+  private redisClient: Redis;
+
+  constructor(
+    private jwtService: JwtService,
+    private configService: ConfigService,
+  ) {}
+
+  afterInit(server: Server) {
+    const redisHost = this.configService.get<string>('REDIS_HOST', 'localhost');
+    const redisPort = this.configService.get<number>('REDIS_PORT', 6381);
+    const redisPassword = this.configService.get<string>('REDIS_PASSWORD');
+
+    const redisOpts: any = { host: redisHost, port: redisPort };
+    if (redisPassword) {
+      redisOpts.password = redisPassword;
+    }
+
+    this.redisClient = new Redis(redisOpts);
+
+    try {
+      const pubClient = new Redis(redisOpts);
+      const subClient = new Redis(redisOpts);
+      const adapter = createAdapter(pubClient, subClient);
+      (server as any).adapter(adapter);
+      this.logger.log('WebSocket gateway initialized with Redis adapter');
+    } catch (error) {
+      this.logger.warn(
+        `Redis adapter setup skipped: ${error.message}. Using default adapter.`,
+      );
+    }
+  }
+
+  async handleConnection(client: SocketWithData) {
+    try {
+      const token = client.handshake.auth?.token;
+
+      if (!token) {
+        this.logger.warn(`Client ${client.id} disconnected: No token provided`);
+        client.disconnect();
+        return;
+      }
+
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+
+      if (!payload || !payload.sub || !payload.tenantId) {
+        this.logger.warn(`Client ${client.id} disconnected: Invalid token`);
+        client.disconnect();
+        return;
+      }
+
+      client.data = {
+        userId: payload.sub,
+        tenantId: payload.tenantId,
+        userName: payload.email.split('@')[0],
+      };
+
+      await client.join(`tenant:${payload.tenantId}`);
+
+      await this.setAgentPresence(payload.tenantId, payload.sub);
+
+      this.server
+        .to(`tenant:${payload.tenantId}`)
+        .emit('agent:online', { userId: payload.sub });
+
+      this.logger.log(
+        `Client ${client.id} connected - User: ${payload.sub}, Tenant: ${payload.tenantId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Client ${client.id} authentication failed: ${error.message}`,
+      );
+      client.disconnect();
+    }
+  }
+
+  async handleDisconnect(client: SocketWithData) {
+    if (!client.data?.userId || !client.data?.tenantId) {
+      return;
+    }
+
+    const { userId, tenantId } = client.data;
+
+    const rooms = Array.from(client.rooms).filter(
+      (room): room is string =>
+        typeof room === 'string' &&
+        room.startsWith('ticket:') &&
+        room !== client.id,
+    );
+
+    for (const room of rooms) {
+      const ticketId = room.replace('ticket:', '');
+      await this.removeFromViewers(ticketId, userId);
+      await this.broadcastViewers(ticketId);
+    }
+
+    await this.removeAgentPresence(tenantId, userId);
+
+    this.server
+      .to(`tenant:${tenantId}`)
+      .emit('agent:offline', { userId });
+
+    this.logger.log(`Client ${client.id} disconnected - User: ${userId}`);
+  }
+
+  @SubscribeMessage('ticket:join')
+  async handleTicketJoin(
+    @ConnectedSocket() client: SocketWithData,
+    @MessageBody() data: { ticketId: string },
+  ) {
+    const { ticketId } = data;
+    const { userId, tenantId } = client.data;
+
+    await client.join(`ticket:${ticketId}`);
+
+    await this.addToViewers(ticketId, userId);
+
+    await this.broadcastViewers(ticketId);
+
+    this.logger.debug(
+      `User ${userId} joined ticket ${ticketId} (tenant: ${tenantId})`,
+    );
+
+    return { success: true };
+  }
+
+  @SubscribeMessage('ticket:leave')
+  async handleTicketLeave(
+    @ConnectedSocket() client: SocketWithData,
+    @MessageBody() data: { ticketId: string },
+  ) {
+    const { ticketId } = data;
+    const { userId } = client.data;
+
+    await client.leave(`ticket:${ticketId}`);
+
+    await this.removeFromViewers(ticketId, userId);
+
+    await this.broadcastViewers(ticketId);
+
+    this.logger.debug(`User ${userId} left ticket ${ticketId}`);
+
+    return { success: true };
+  }
+
+  @SubscribeMessage('typing')
+  async handleTyping(
+    @ConnectedSocket() client: SocketWithData,
+    @MessageBody() data: { ticketId: string; isTyping: boolean },
+  ) {
+    const { ticketId, isTyping } = data;
+    const { userId, userName } = client.data;
+
+    client.to(`ticket:${ticketId}`).emit('typing', {
+      userId,
+      userName,
+      isTyping,
+    });
+
+    return { success: true };
+  }
+
+  @SubscribeMessage('heartbeat')
+  async handleHeartbeat(@ConnectedSocket() client: SocketWithData) {
+    const { userId, tenantId } = client.data;
+
+    await this.setAgentPresence(tenantId, userId);
+
+    return { success: true };
+  }
+
+  @SubscribeMessage('presence:list')
+  async handlePresenceList(@ConnectedSocket() client: SocketWithData) {
+    const { tenantId } = client.data;
+
+    const pattern = `presence:${tenantId}:*`;
+    const keys = await this.scanRedisKeys(pattern);
+
+    const agentIds = keys.map((key) => key.split(':')[2]);
+
+    return { agentIds };
+  }
+
+  @OnEvent('ticket.created')
+  async handleTicketCreated(payload: { tenantId: string; ticket: any }) {
+    const { tenantId, ticket } = payload;
+
+    this.server.to(`tenant:${tenantId}`).emit('ticket:created', ticket);
+
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'ticket.created', tenant_id: tenantId, ticket,
+    }));
+
+    this.logger.debug(
+      `Broadcast ticket:created to tenant ${tenantId} - ticket ${ticket.id}`,
+    );
+  }
+
+  @OnEvent('ticket.updated')
+  async handleTicketUpdated(payload: { tenantId: string; ticket: any }) {
+    const { tenantId, ticket } = payload;
+
+    this.server.to(`tenant:${tenantId}`).emit('ticket:updated', ticket);
+    this.server.to(`ticket:${ticket.id}`).emit('ticket:updated', ticket);
+
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'ticket.updated', tenant_id: tenantId, ticket,
+    }));
+
+    this.logger.debug(
+      `Broadcast ticket:updated to tenant ${tenantId} and ticket room ${ticket.id}`,
+    );
+  }
+
+  @OnEvent('ticket.merged')
+  async handleTicketMerged(payload: {
+    tenantId: string;
+    sourceId: string;
+    targetId: string;
+  }) {
+    const { tenantId, sourceId, targetId } = payload;
+
+    this.server.to(`tenant:${tenantId}`).emit('ticket:merged', {
+      sourceId,
+      targetId,
+    });
+
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'ticket.merged', tenant_id: tenantId, source_id: sourceId, target_id: targetId,
+    }));
+
+    this.logger.debug(
+      `Broadcast ticket:merged to tenant ${tenantId} - source ${sourceId} to target ${targetId}`,
+    );
+  }
+
+  @OnEvent('message.created')
+  async handleMessageCreated(payload: {
+    tenantId: string;
+    message: any;
+    ticketId: string;
+  }) {
+    const { tenantId, ticketId, message } = payload;
+
+    this.server.to(`ticket:${ticketId}`).emit('message:created', message);
+
+    await this.redisClient.publish('tickethacker:events', JSON.stringify({
+      event: 'message.created', tenant_id: tenantId, ticket_id: ticketId, message,
+    }));
+
+    this.logger.debug(
+      `Broadcast message:created to ticket room ${ticketId} - message ${message.id}`,
+    );
+  }
+
+  @OnEvent('notification.created')
+  handleNotificationCreated(payload: {
+    tenantId: string;
+    userId: string;
+    notification: any;
+  }) {
+    const { tenantId, userId, notification } = payload;
+
+    // Broadcast to the tenant room with userId so clients filter client-side.
+    // This avoids needing per-user socket rooms while still delivering targeted
+    // notifications over the existing tenant-scoped connection.
+    this.server.to(`tenant:${tenantId}`).emit('notification:new', {
+      userId,
+      notification,
+    });
+
+    this.logger.debug(
+      `Broadcast notification:new to tenant ${tenantId} for user ${userId} - notification ${notification.id}`,
+    );
+  }
+
+  private async setAgentPresence(
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    const key = `presence:${tenantId}:${userId}`;
+    await this.redisClient.set(key, Date.now().toString(), 'EX', 30);
+  }
+
+  private async removeAgentPresence(
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    const key = `presence:${tenantId}:${userId}`;
+    await this.redisClient.del(key);
+  }
+
+  private async addToViewers(
+    ticketId: string,
+    userId: string,
+  ): Promise<void> {
+    const key = `viewing:${ticketId}`;
+    await this.redisClient.sadd(key, userId);
+  }
+
+  private async removeFromViewers(
+    ticketId: string,
+    userId: string,
+  ): Promise<void> {
+    const key = `viewing:${ticketId}`;
+    await this.redisClient.srem(key, userId);
+  }
+
+  private async getViewers(ticketId: string): Promise<string[]> {
+    const key = `viewing:${ticketId}`;
+    return await this.redisClient.smembers(key);
+  }
+
+  private async broadcastViewers(ticketId: string): Promise<void> {
+    const viewers = await this.getViewers(ticketId);
+
+    this.server.to(`ticket:${ticketId}`).emit('ticket:viewers', { viewers });
+  }
+
+  private async scanRedisKeys(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor = '0';
+
+    do {
+      const [nextCursor, foundKeys] = await this.redisClient.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        100,
+      );
+      cursor = nextCursor;
+      keys.push(...foundKeys);
+    } while (cursor !== '0');
+
+    return keys;
+  }
+}
