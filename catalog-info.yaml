@@ -1,0 +1,15 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tickethacker
+  description: Ticket-hunting side project
+  annotations:
+    github.com/project-slug: JadenRazo/TicketHacker
+  tags:
+    - side-project
+spec:
+  type: service
+  lifecycle: experimental
+  owner: jaden
+  system: raizhost-platform
