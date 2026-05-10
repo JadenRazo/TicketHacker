@@ -65,7 +65,7 @@ export default function TicketListPage() {
     refetch,
   } = useInfiniteQuery({
     queryKey: ['tickets', statusFilter, priorityFilter, channelFilter, sortBy],
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
       getTickets({
         status: statusFilter.length > 0 ? statusFilter : undefined,
         priority: priorityFilter.length > 0 ? priorityFilter : undefined,
@@ -74,14 +74,14 @@ export default function TicketListPage() {
         cursor: pageParam,
         limit: 50,
       }),
-    initialPageParam: undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
   // Fetch users for bulk assignment
   const { data: usersData } = useQuery({
     queryKey: ['users'],
-    queryFn: getUsers,
+    queryFn: () => getUsers(),
   });
 
   const users = usersData?.users || [];

@@ -21,7 +21,11 @@ export class AutomationListener {
     triggeredByAutomation?: boolean;
   }): Promise<void> {
     if (payload.triggeredByAutomation) return;
-    await this.processAutomations(payload.tenantId, payload.ticket, 'ticket.created');
+    await this.processAutomations(
+      payload.tenantId,
+      payload.ticket,
+      'ticket.created',
+    );
   }
 
   @OnEvent('ticket.updated')
@@ -31,7 +35,11 @@ export class AutomationListener {
     triggeredByAutomation?: boolean;
   }): Promise<void> {
     if (payload.triggeredByAutomation) return;
-    await this.processAutomations(payload.tenantId, payload.ticket, 'ticket.updated');
+    await this.processAutomations(
+      payload.tenantId,
+      payload.ticket,
+      'ticket.updated',
+    );
   }
 
   /**

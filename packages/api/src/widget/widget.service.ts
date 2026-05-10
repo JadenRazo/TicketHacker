@@ -59,7 +59,9 @@ export class WidgetService {
     tenantId: string,
     data: { name?: string; email?: string; metadata?: Record<string, any> },
   ) {
-    const externalId = data.email || `anon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const externalId =
+      data.email ||
+      `anon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const contact = await this.prisma.contact.upsert({
       where: {

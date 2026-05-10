@@ -30,7 +30,7 @@ export class RoutingService {
     tenantId: string,
     teamId?: string,
   ): Promise<string | null> {
-    let userWhere: any = {
+    const userWhere: any = {
       tenantId,
       isActive: true,
       role: { in: ['AGENT', 'ADMIN'] },
@@ -128,10 +128,7 @@ export class RoutingService {
    * 1. Attempt skill-based routing (rule match)
    * 2. Fall back to round-robin within the matched team, or globally
    */
-  async autoAssign(
-    tenantId: string,
-    ticket: any,
-  ): Promise<RoutingAssignment> {
+  async autoAssign(tenantId: string, ticket: any): Promise<RoutingAssignment> {
     const skillResult = await this.assignBySkill(tenantId, ticket);
 
     if (skillResult) {
@@ -160,7 +157,9 @@ export class RoutingService {
   /**
    * Returns all active agents with their current open/pending ticket counts.
    */
-  async getAgentLoads(tenantId: string): Promise<
+  async getAgentLoads(
+    tenantId: string,
+  ): Promise<
     Array<{ id: string; name: string; email: string; openTickets: number }>
   > {
     const agents = await this.prisma.user.findMany({

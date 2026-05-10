@@ -51,10 +51,7 @@ export class KnowledgeBaseController {
   }
 
   @Get(':id')
-  findOne(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.kbService.findOne(tenantId, id);
   }
 
@@ -69,28 +66,19 @@ export class KnowledgeBaseController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  remove(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.kbService.remove(tenantId, id);
   }
 
   @Post(':id/publish')
   @HttpCode(HttpStatus.OK)
-  publish(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  publish(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.kbService.publish(tenantId, id);
   }
 
   @Post(':id/archive')
   @HttpCode(HttpStatus.OK)
-  archive(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  archive(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.kbService.archive(tenantId, id);
   }
 }

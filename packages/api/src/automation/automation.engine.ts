@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
-import { TicketStatus, Priority, MessageType, MessageDirection } from '@prisma/client';
+import {
+  TicketStatus,
+  Priority,
+  MessageType,
+  MessageDirection,
+} from '@prisma/client';
 
 @Injectable()
 export class AutomationEngine {
@@ -27,11 +32,15 @@ export class AutomationEngine {
     }
 
     if (Array.isArray(conditions.all)) {
-      return conditions.all.every((c: any) => this.evaluateSingleCondition(c, ticket));
+      return conditions.all.every((c: any) =>
+        this.evaluateSingleCondition(c, ticket),
+      );
     }
 
     if (Array.isArray(conditions.any)) {
-      return conditions.any.some((c: any) => this.evaluateSingleCondition(c, ticket));
+      return conditions.any.some((c: any) =>
+        this.evaluateSingleCondition(c, ticket),
+      );
     }
 
     // Unrecognised structure — treat as no match rather than a silent pass
@@ -68,7 +77,9 @@ export class AutomationEngine {
 
       case 'starts_with':
         if (ticketValue === null || ticketValue === undefined) return false;
-        return String(ticketValue).toLowerCase().startsWith(String(value).toLowerCase());
+        return String(ticketValue)
+          .toLowerCase()
+          .startsWith(String(value).toLowerCase());
 
       case 'is_empty':
         return this.opIsEmpty(ticketValue);
@@ -83,7 +94,16 @@ export class AutomationEngine {
   }
 
   private resolveField(field: string, ticket: any): any {
-    const supported = ['status', 'priority', 'channel', 'tags', 'subject', 'assigneeId', 'teamId', 'contactId'];
+    const supported = [
+      'status',
+      'priority',
+      'channel',
+      'tags',
+      'subject',
+      'assigneeId',
+      'teamId',
+      'contactId',
+    ];
     if (!supported.includes(field)) {
       this.logger.warn(`Unsupported automation field: ${field}`);
       return undefined;
@@ -95,7 +115,9 @@ export class AutomationEngine {
     if (ticketValue === null || ticketValue === undefined) {
       return ruleValue === null || ruleValue === undefined;
     }
-    return String(ticketValue).toLowerCase() === String(ruleValue).toLowerCase();
+    return (
+      String(ticketValue).toLowerCase() === String(ruleValue).toLowerCase()
+    );
   }
 
   private opContains(ticketValue: any, ruleValue: any): boolean {
@@ -103,13 +125,15 @@ export class AutomationEngine {
 
     // Array field (e.g. tags): check membership
     if (Array.isArray(ticketValue)) {
-      return ticketValue.some((v: any) =>
-        String(v).toLowerCase() === String(ruleValue).toLowerCase(),
+      return ticketValue.some(
+        (v: any) => String(v).toLowerCase() === String(ruleValue).toLowerCase(),
       );
     }
 
     // String field: substring match
-    return String(ticketValue).toLowerCase().includes(String(ruleValue).toLowerCase());
+    return String(ticketValue)
+      .toLowerCase()
+      .includes(String(ruleValue).toLowerCase());
   }
 
   private opIsEmpty(ticketValue: any): boolean {
@@ -178,7 +202,9 @@ export class AutomationEngine {
 
         case 'add_tags': {
           // Tags are merged during the update; we fetch current tags below
-          const newTags = Array.isArray(action.value) ? action.value : [action.value];
+          const newTags = Array.isArray(action.value)
+            ? action.value
+            : [action.value];
           ticketUpdate._addTags = (ticketUpdate._addTags || []).concat(newTags);
           break;
         }
@@ -207,7 +233,9 @@ export class AutomationEngine {
         select: { tags: true },
       });
       const existingTags: string[] = current?.tags ?? [];
-      const merged = Array.from(new Set([...existingTags, ...ticketUpdate._addTags]));
+      const merged = Array.from(
+        new Set([...existingTags, ...ticketUpdate._addTags]),
+      );
       ticketUpdate.tags = merged;
       delete ticketUpdate._addTags;
     }
@@ -301,7 +329,9 @@ export class AutomationEngine {
     };
     const key = String(value).toUpperCase();
     if (!map[key]) {
-      this.logger.warn(`Invalid ticket status value in automation action: ${value}`);
+      this.logger.warn(
+        `Invalid ticket status value in automation action: ${value}`,
+      );
       return null;
     }
     return map[key];

@@ -1,4 +1,10 @@
-import { IsString, MaxLength, IsObject, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsObject,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateSavedViewDto {
   @IsString()

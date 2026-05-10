@@ -27,7 +27,10 @@ export class PortalService {
   // ----------------------------------------------------------------
   // Auth: request a magic link
   // ----------------------------------------------------------------
-  async requestMagicLink(tenantSlug: string, email: string): Promise<{ message: string }> {
+  async requestMagicLink(
+    tenantSlug: string,
+    email: string,
+  ): Promise<{ message: string }> {
     // Always return the same message to avoid email enumeration
     const genericResponse = {
       message: 'If an account exists, a login link has been sent',
@@ -68,7 +71,12 @@ export class PortalService {
     const appUrl = this.config.get<string>('APP_URL', 'http://localhost:5173');
     const magicLink = `${appUrl}/portal/${tenantSlug}/verify?token=${token}`;
 
-    await this.sendMagicLinkEmail(contact.email ?? '', contact.name ?? 'Customer', tenant.name, magicLink);
+    await this.sendMagicLinkEmail(
+      contact.email ?? '',
+      contact.name ?? 'Customer',
+      tenant.name,
+      magicLink,
+    );
 
     return genericResponse;
   }
@@ -160,7 +168,11 @@ export class PortalService {
   // ----------------------------------------------------------------
   // Tickets: get a single ticket with visible messages
   // ----------------------------------------------------------------
-  async getContactTicket(contactId: string, tenantId: string, ticketId: string) {
+  async getContactTicket(
+    contactId: string,
+    tenantId: string,
+    ticketId: string,
+  ) {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
       select: {
@@ -194,7 +206,11 @@ export class PortalService {
       },
     });
 
-    if (!ticket || ticket.tenantId !== tenantId || ticket.contactId !== contactId) {
+    if (
+      !ticket ||
+      ticket.tenantId !== tenantId ||
+      ticket.contactId !== contactId
+    ) {
       throw new NotFoundException('Ticket not found');
     }
 
@@ -218,7 +234,11 @@ export class PortalService {
       where: { id: ticketId },
     });
 
-    if (!ticket || ticket.tenantId !== tenantId || ticket.contactId !== contactId) {
+    if (
+      !ticket ||
+      ticket.tenantId !== tenantId ||
+      ticket.contactId !== contactId
+    ) {
       throw new ForbiddenException('Ticket not found or access denied');
     }
 
@@ -272,7 +292,10 @@ export class PortalService {
     const secure = port === 465;
     const user = this.config.get<string>('SMTP_USER');
     const pass = this.config.get<string>('SMTP_PASS');
-    const from = this.config.get<string>('SMTP_FROM', 'noreply@tickethacker.local');
+    const from = this.config.get<string>(
+      'SMTP_FROM',
+      'noreply@tickethacker.local',
+    );
 
     const transportOptions: any = { host, port, secure };
     if (user && pass) {

@@ -63,7 +63,10 @@ export class AiController {
         data: {
           metadata: {
             ...(ticket.metadata as Record<string, unknown>),
-            aiClassification: classification as unknown as Record<string, unknown>,
+            aiClassification: classification as unknown as Record<
+              string,
+              unknown
+            >,
           } as any,
         },
       });
@@ -115,7 +118,10 @@ export class AiController {
     const tenantSettings = ticket.tenant.settings as any;
     const brandVoice = tenantSettings?.brandVoice;
 
-    const suggestions = await this.aiService.suggestReplies(messages, brandVoice);
+    const suggestions = await this.aiService.suggestReplies(
+      messages,
+      brandVoice,
+    );
 
     const latencyMs = Date.now() - startTime;
 
@@ -170,5 +176,4 @@ export class AiController {
 
     return { summary };
   }
-
 }

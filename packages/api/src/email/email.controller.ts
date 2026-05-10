@@ -9,7 +9,9 @@ export class EmailController {
   constructor(private readonly emailService: EmailService) {}
 
   @Post('inbound')
-  async handleInbound(@Body() dto: InboundEmailDto): Promise<{ status: string }> {
+  async handleInbound(
+    @Body() dto: InboundEmailDto,
+  ): Promise<{ status: string }> {
     this.logger.log('Received inbound email webhook');
     await this.emailService.handleInbound(dto);
     return { status: 'processed' };

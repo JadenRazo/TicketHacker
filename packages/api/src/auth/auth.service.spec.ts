@@ -67,7 +67,14 @@ describe('AuthService', () => {
       mockPrisma.tenant.findUnique.mockResolvedValue(null);
       mockPrisma.tenant.create.mockResolvedValue({
         id: 'tenant-1',
-        users: [{ id: 'user-1', email: dto.email, role: 'OWNER', tenantId: 'tenant-1' }],
+        users: [
+          {
+            id: 'user-1',
+            email: dto.email,
+            role: 'OWNER',
+            tenantId: 'tenant-1',
+          },
+        ],
       });
 
       const result = await service.register(dto);

@@ -13,7 +13,9 @@ import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
   const config = app.get(ConfigService);
 
   // Ensure the uploads directory exists at project root.
@@ -21,10 +23,12 @@ async function bootstrap() {
   fs.mkdirSync(uploadsDir, { recursive: true });
 
   app.useLogger(app.get(Logger));
-  app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-  }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
   app.use(compression());
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalInterceptors(new AuditLogInterceptor());
@@ -53,7 +57,11 @@ async function bootstrap() {
     .setVersion('0.1.0')
     .addBearerAuth()
     .build();
-  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig));
+  SwaggerModule.setup(
+    'docs',
+    app,
+    SwaggerModule.createDocument(app, swaggerConfig),
+  );
 
   const port = config.get('API_PORT', 3001);
   await app.listen(port);

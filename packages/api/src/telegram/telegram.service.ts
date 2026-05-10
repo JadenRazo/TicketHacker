@@ -3,7 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Bot, webhookCallback } from 'grammy';
 import { PrismaService } from '../prisma/prisma.service';
-import { Channel, MessageDirection, MessageType, TicketStatus } from '@prisma/client';
+import {
+  Channel,
+  MessageDirection,
+  MessageType,
+  TicketStatus,
+} from '@prisma/client';
 
 @Injectable()
 export class TelegramService {
@@ -21,7 +26,9 @@ export class TelegramService {
       const bot = new Bot(botToken);
 
       const botInfo = await bot.api.getMe();
-      this.logger.log(`Registering Telegram bot: @${botInfo.username} for tenant ${tenantId}`);
+      this.logger.log(
+        `Registering Telegram bot: @${botInfo.username} for tenant ${tenantId}`,
+      );
 
       await this.prisma.platformConnection.upsert({
         where: {
@@ -52,7 +59,9 @@ export class TelegramService {
 
       this.bots.set(tenantId, bot);
 
-      this.logger.log(`Telegram bot registered successfully for tenant ${tenantId}`);
+      this.logger.log(
+        `Telegram bot registered successfully for tenant ${tenantId}`,
+      );
 
       return {
         success: true,
@@ -74,7 +83,8 @@ export class TelegramService {
 
       const chatId = message.chat.id.toString();
       const userId = message.from.id.toString();
-      const userName = message.from.username || message.from.first_name || 'Telegram User';
+      const userName =
+        message.from.username || message.from.first_name || 'Telegram User';
       const messageText = message.text;
       const messageId = message.message_id.toString();
 
@@ -129,9 +139,10 @@ export class TelegramService {
       });
 
       if (!ticket) {
-        const subject = messageText.length > 100
-          ? `${messageText.slice(0, 100)}...`
-          : messageText;
+        const subject =
+          messageText.length > 100
+            ? `${messageText.slice(0, 100)}...`
+            : messageText;
 
         ticket = await this.prisma.ticket.create({
           data: {

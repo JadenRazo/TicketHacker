@@ -102,6 +102,11 @@ export class PortalController {
     @Body() dto: ReplyToTicketDto,
   ) {
     const { contactId, tenantId } = req.portalContact;
-    return this.portalService.replyToTicket(contactId, tenantId, ticketId, dto.content);
+    return this.portalService.replyToTicket(
+      contactId,
+      tenantId,
+      ticketId,
+      dto.content,
+    );
   }
 }

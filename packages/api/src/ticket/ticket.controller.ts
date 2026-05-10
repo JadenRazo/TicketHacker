@@ -45,10 +45,7 @@ export class TicketController {
   }
 
   @Get(':id')
-  findOne(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.ticketService.findOne(tenantId, id);
   }
 
@@ -77,7 +74,11 @@ export class TicketController {
     @Param('id') sourceId: string,
     @Body() mergeDto: MergeTicketDto,
   ) {
-    return this.ticketService.merge(tenantId, sourceId, mergeDto.targetTicketId);
+    return this.ticketService.merge(
+      tenantId,
+      sourceId,
+      mergeDto.targetTicketId,
+    );
   }
 
   @Post('bulk')

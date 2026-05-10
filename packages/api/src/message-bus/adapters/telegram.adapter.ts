@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TelegramService } from '../../telegram/telegram.service';
-import {
-  ChannelAdapter,
-  UnifiedMessage,
-} from '../channel-adapter.interface';
+import { ChannelAdapter, UnifiedMessage } from '../channel-adapter.interface';
 
 @Injectable()
 export class TelegramAdapter implements ChannelAdapter {
@@ -23,9 +20,7 @@ export class TelegramAdapter implements ChannelAdapter {
     };
   }
 
-  async sendOutbound(
-    message: UnifiedMessage,
-  ): Promise<string | null> {
+  async sendOutbound(message: UnifiedMessage): Promise<string | null> {
     const result = await this.telegramService.sendOutbound(
       message.ticketId,
       message.contentText,

@@ -39,7 +39,8 @@ export class NotificationListener {
       });
 
       const subject = ticket.subject ?? '';
-      const body = subject.length > 100 ? subject.slice(0, 97) + '...' : subject;
+      const body =
+        subject.length > 100 ? subject.slice(0, 97) + '...' : subject;
 
       await Promise.all(
         agents.map((agent) =>

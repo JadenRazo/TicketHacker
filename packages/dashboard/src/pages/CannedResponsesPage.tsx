@@ -57,7 +57,7 @@ export default function CannedResponsesPage() {
 
   const { data: cannedResponses = [], isLoading, error } = useQuery({
     queryKey: ['canned-responses'],
-    queryFn: getCannedResponses,
+    queryFn: () => getCannedResponses(),
   });
 
   const createMutation = useMutation({

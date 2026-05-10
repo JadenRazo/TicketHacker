@@ -93,10 +93,7 @@ export class AiListener {
         accepted: classification.autoApply,
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to auto-classify ticket ${ticket.id}`,
-        error,
-      );
+      this.logger.error(`Failed to auto-classify ticket ${ticket.id}`, error);
     }
   }
 }

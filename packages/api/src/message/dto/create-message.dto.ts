@@ -1,4 +1,11 @@
-import { IsString, MaxLength, IsEnum, IsOptional, IsArray, IsUUID } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsEnum,
+  IsOptional,
+  IsArray,
+  IsUUID,
+} from 'class-validator';
 import { MessageType } from '@prisma/client';
 
 export class CreateMessageDto {

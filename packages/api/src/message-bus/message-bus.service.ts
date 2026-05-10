@@ -34,13 +34,19 @@ export class MessageBusService {
       backoff: { type: 'exponential', delay: 2000 },
       priority: data.action === 'classify' ? 1 : 5,
     });
-    this.logger.log(`Queued AI task ${data.action} for ticket ${data.ticketId}`);
+    this.logger.log(
+      `Queued AI task ${data.action} for ticket ${data.ticketId}`,
+    );
   }
 
   async queueMaintenance(task: string) {
-    await this.maintenanceQueue.add(task, { task }, {
-      attempts: 1,
-    });
+    await this.maintenanceQueue.add(
+      task,
+      { task },
+      {
+        attempts: 1,
+      },
+    );
   }
 
   async setupRecurringJobs() {

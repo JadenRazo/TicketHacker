@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DiscordService } from '../../discord/discord.service';
-import {
-  ChannelAdapter,
-  UnifiedMessage,
-} from '../channel-adapter.interface';
+import { ChannelAdapter, UnifiedMessage } from '../channel-adapter.interface';
 
 @Injectable()
 export class DiscordAdapter implements ChannelAdapter {
@@ -23,9 +20,7 @@ export class DiscordAdapter implements ChannelAdapter {
     };
   }
 
-  async sendOutbound(
-    message: UnifiedMessage,
-  ): Promise<string | null> {
+  async sendOutbound(message: UnifiedMessage): Promise<string | null> {
     const result = await this.discordService.sendOutbound(
       message.ticketId,
       message.contentText,

@@ -40,7 +40,10 @@ export class NotificationController {
     @CurrentUser('id') userId: string,
     @CurrentUser('tenantId') tenantId: string,
   ) {
-    const count = await this.notificationService.getUnreadCount(userId, tenantId);
+    const count = await this.notificationService.getUnreadCount(
+      userId,
+      tenantId,
+    );
     return { count };
   }
 

@@ -65,11 +65,9 @@ export class OpenclawController {
     const tenantId = req.tenantId;
     await this.validateTicketAccess(ticketId, tenantId);
 
-    const result = await this.openclawService.triageTicket(
-      ticketId,
-      tenantId,
-      { model: dto.model },
-    );
+    const result = await this.openclawService.triageTicket(ticketId, tenantId, {
+      model: dto.model,
+    });
 
     await this.openclawService.appendAiActivity(ticketId, tenantId, {
       action: 'triage',
@@ -183,7 +181,10 @@ export class OpenclawController {
     @Body() dto: WebhookInboundDto,
     @Headers('x-webhook-secret') secret: string,
   ) {
-    const expectedSecret = this.config.get<string>('OPENCLAW_WEBHOOK_SECRET', '');
+    const expectedSecret = this.config.get<string>(
+      'OPENCLAW_WEBHOOK_SECRET',
+      '',
+    );
 
     if (!expectedSecret || secret !== expectedSecret) {
       throw new ForbiddenException('Invalid webhook secret');

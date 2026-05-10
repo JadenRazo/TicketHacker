@@ -1,4 +1,10 @@
-import { IsOptional, IsString, MaxLength, IsIn, IsObject } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  MaxLength,
+  IsIn,
+  IsObject,
+} from 'class-validator';
 
 export class AgentActionDto {
   @IsOptional()
@@ -15,7 +21,12 @@ export type WebhookEventType =
 
 export class WebhookInboundDto {
   @IsString()
-  @IsIn(['agent.completed', 'agent.failed', 'agent.reply_sent', 'agent.escalated'])
+  @IsIn([
+    'agent.completed',
+    'agent.failed',
+    'agent.reply_sent',
+    'agent.escalated',
+  ])
   event: WebhookEventType;
 
   @IsString()

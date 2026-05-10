@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EmailService } from '../../email/email.service';
-import {
-  ChannelAdapter,
-  UnifiedMessage,
-} from '../channel-adapter.interface';
+import { ChannelAdapter, UnifiedMessage } from '../channel-adapter.interface';
 
 @Injectable()
 export class EmailAdapter implements ChannelAdapter {
@@ -28,13 +25,8 @@ export class EmailAdapter implements ChannelAdapter {
     };
   }
 
-  async sendOutbound(
-    message: UnifiedMessage,
-  ): Promise<string | null> {
-    await this.emailService.sendOutbound(
-      message.ticketId,
-      message.contentText,
-    );
+  async sendOutbound(message: UnifiedMessage): Promise<string | null> {
+    await this.emailService.sendOutbound(message.ticketId, message.contentText);
     return `email-${message.ticketId}-${Date.now()}`;
   }
 

@@ -1,4 +1,11 @@
-import { IsString, MaxLength, IsOptional, IsEnum, IsUUID, IsArray } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsOptional,
+  IsEnum,
+  IsUUID,
+  IsArray,
+} from 'class-validator';
 import { MacroScope } from '@prisma/client';
 
 export class CreateMacroDto {

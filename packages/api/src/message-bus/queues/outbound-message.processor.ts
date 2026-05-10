@@ -30,7 +30,9 @@ export class OutboundMessageProcessor extends WorkerHost {
     ]);
   }
 
-  async process(job: Job<{ ticketId: string; content: string; tenantId: string }>) {
+  async process(
+    job: Job<{ ticketId: string; content: string; tenantId: string }>,
+  ) {
     const { ticketId, content, tenantId } = job.data;
     this.logger.log(`Processing outbound message for ticket ${ticketId}`);
 
@@ -63,12 +65,19 @@ export class OutboundMessageProcessor extends WorkerHost {
           direction: 'OUTBOUND',
           contentText: content,
         },
-        connection ? { config: connection.config as Record<string, any> } : { config: {} },
+        connection
+          ? { config: connection.config as Record<string, any> }
+          : { config: {} },
       );
 
-      this.logger.log(`Outbound message delivered for ticket ${ticketId} via ${ticket.channel}`);
+      this.logger.log(
+        `Outbound message delivered for ticket ${ticketId} via ${ticket.channel}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to send outbound message for ticket ${ticketId}`, error);
+      this.logger.error(
+        `Failed to send outbound message for ticket ${ticketId}`,
+        error,
+      );
       throw error;
     }
   }

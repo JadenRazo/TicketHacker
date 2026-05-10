@@ -1,4 +1,11 @@
-import { IsString, MaxLength, IsOptional, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsOptional,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MessageFiltersDto {

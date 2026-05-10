@@ -24,7 +24,6 @@ import {
   aiResolveTicket,
   aiSummarizeTicket,
   type Ticket,
-  type Message,
   type AgentResult,
 } from '../lib/api';
 import { useTicketRoom, emitTyping } from '../lib/socket';
@@ -163,17 +162,17 @@ export default function TicketDetailPage() {
 
   const { data: cannedResponses } = useQuery({
     queryKey: ['canned-responses'],
-    queryFn: getCannedResponses,
+    queryFn: () => getCannedResponses(),
   });
 
   const { data: macros } = useQuery({
     queryKey: ['macros'],
-    queryFn: getMacros,
+    queryFn: () => getMacros(),
   });
 
   const { data: customFieldDefs } = useQuery({
     queryKey: ['custom-field-definitions'],
-    queryFn: getCustomFieldDefinitions,
+    queryFn: () => getCustomFieldDefinitions(),
     retry: false,
   });
 

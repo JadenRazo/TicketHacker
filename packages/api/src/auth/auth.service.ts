@@ -66,12 +66,7 @@ export class AuthService {
       data: { lastSeenAt: new Date() },
     });
 
-    return this.generateTokens(
-      user.id,
-      user.tenantId,
-      user.email,
-      user.role,
-    );
+    return this.generateTokens(user.id, user.tenantId, user.email, user.role);
   }
 
   async refresh(refreshToken: string) {
@@ -84,12 +79,7 @@ export class AuthService {
       });
       if (!user || !user.isActive)
         throw new UnauthorizedException('Invalid token');
-      return this.generateTokens(
-        user.id,
-        user.tenantId,
-        user.email,
-        user.role,
-      );
+      return this.generateTokens(user.id, user.tenantId, user.email, user.role);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }

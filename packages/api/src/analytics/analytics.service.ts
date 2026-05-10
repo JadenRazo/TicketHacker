@@ -221,18 +221,12 @@ export class AnalyticsService {
 
     const createdMap = new Map<string, number>();
     for (const r of createdRows) {
-      createdMap.set(
-        r.bucket.toISOString().substring(0, 10),
-        Number(r.count),
-      );
+      createdMap.set(r.bucket.toISOString().substring(0, 10), Number(r.count));
     }
 
     const resolvedMap = new Map<string, number>();
     for (const r of resolvedRows) {
-      resolvedMap.set(
-        r.bucket.toISOString().substring(0, 10),
-        Number(r.count),
-      );
+      resolvedMap.set(r.bucket.toISOString().substring(0, 10), Number(r.count));
     }
 
     const hoursMap = new Map<string, number>();

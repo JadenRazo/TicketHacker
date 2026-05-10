@@ -1,4 +1,11 @@
-import { IsString, MaxLength, IsEnum, IsOptional, IsBoolean, IsObject } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+  IsObject,
+} from 'class-validator';
 import { CustomFieldType } from '@prisma/client';
 
 export class UpdateCustomFieldDto {

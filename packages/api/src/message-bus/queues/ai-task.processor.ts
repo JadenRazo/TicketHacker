@@ -82,7 +82,10 @@ export class AiTaskProcessor extends WorkerHost {
         }
       }
     } catch (error) {
-      this.logger.error(`AI task ${action} failed for ticket ${ticketId}`, error);
+      this.logger.error(
+        `AI task ${action} failed for ticket ${ticketId}`,
+        error,
+      );
       throw error;
     }
   }

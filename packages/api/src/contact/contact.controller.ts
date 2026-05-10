@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ContactService } from './contact.service';
 import { HealthService } from './health.service';
@@ -42,10 +36,7 @@ export class ContactController {
   }
 
   @Get(':id')
-  findOne(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.contactService.findOne(tenantId, id);
   }
 

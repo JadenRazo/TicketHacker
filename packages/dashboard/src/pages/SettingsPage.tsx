@@ -29,7 +29,7 @@ export default function SettingsPage() {
 
   const { data: tenant, isLoading, error } = useQuery({
     queryKey: ['tenant'],
-    queryFn: getTenant,
+    queryFn: () => getTenant(),
   });
 
   const [brandingColors, setBrandingColors] = useState({
@@ -43,19 +43,19 @@ export default function SettingsPage() {
 
   const { data: openclawStatus } = useQuery({
     queryKey: ['openclaw-status'],
-    queryFn: getOpenClawStatus,
+    queryFn: () => getOpenClawStatus(),
     retry: false,
   });
 
   const { data: routingConfig, isLoading: routingLoading } = useQuery({
     queryKey: ['routing-config'],
-    queryFn: getRoutingConfig,
+    queryFn: () => getRoutingConfig(),
     retry: false,
   });
 
   const { data: routingAgents } = useQuery({
     queryKey: ['routing-agents'],
-    queryFn: getRoutingAgents,
+    queryFn: () => getRoutingAgents(),
     retry: false,
   });
 
@@ -888,7 +888,7 @@ function WebhookSection() {
 
   const { data: endpoints = [], isLoading } = useQuery({
     queryKey: ['webhook-endpoints'],
-    queryFn: getWebhookEndpoints,
+    queryFn: () => getWebhookEndpoints(),
   });
 
   const createMutation = useMutation({

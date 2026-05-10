@@ -101,7 +101,11 @@ export class MessageService {
       });
 
       if (refreshed) {
-        this.eventEmitter.emit('message.created', { tenantId, message: refreshed, ticketId });
+        this.eventEmitter.emit('message.created', {
+          tenantId,
+          message: refreshed,
+          ticketId,
+        });
         return refreshed;
       }
     }

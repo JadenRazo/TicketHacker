@@ -12,7 +12,7 @@ import {
   getUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
-  NotificationItem,
+  type NotificationItem,
 } from '../lib/api';
 
 const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -42,17 +42,17 @@ export default function Layout() {
 
   const { data: usersData } = useQuery({
     queryKey: ['users'],
-    queryFn: getUsers,
+    queryFn: () => getUsers(),
   });
 
   const { data: savedViews } = useQuery({
     queryKey: ['saved-views'],
-    queryFn: getSavedViews,
+    queryFn: () => getSavedViews(),
   });
 
   const { data: unreadData } = useQuery({
     queryKey: ['notifications', 'unread-count'],
-    queryFn: getUnreadNotificationCount,
+    queryFn: () => getUnreadNotificationCount(),
     refetchInterval: 60_000,
   });
 

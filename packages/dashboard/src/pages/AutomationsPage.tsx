@@ -120,7 +120,7 @@ export default function AutomationsPage() {
 
   const { data: rules = [], isLoading, error } = useQuery({
     queryKey: ['automations'],
-    queryFn: getAutomationRules,
+    queryFn: () => getAutomationRules(),
   });
 
   const createMutation = useMutation({

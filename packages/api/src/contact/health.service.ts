@@ -147,9 +147,7 @@ export class HealthService {
     return result;
   }
 
-  async getHealthSummary(
-    tenantId: string,
-  ): Promise<{
+  async getHealthSummary(tenantId: string): Promise<{
     total: number;
     healthy: number;
     atRisk: number;
@@ -196,10 +194,19 @@ export class HealthService {
 
   private scoreTicketVolume(count: number): HealthScoreFactor {
     if (count === 0) return { score: 20, detail: 'No tickets in last 30 days' };
-    if (count <= 2) return { score: 15, detail: `${count} ticket${count > 1 ? 's' : ''} in last 30 days` };
-    if (count <= 5) return { score: 10, detail: `${count} tickets in last 30 days` };
-    if (count <= 10) return { score: 5, detail: `${count} tickets in last 30 days` };
-    return { score: 0, detail: `${count} tickets in last 30 days (high volume)` };
+    if (count <= 2)
+      return {
+        score: 15,
+        detail: `${count} ticket${count > 1 ? 's' : ''} in last 30 days`,
+      };
+    if (count <= 5)
+      return { score: 10, detail: `${count} tickets in last 30 days` };
+    if (count <= 10)
+      return { score: 5, detail: `${count} tickets in last 30 days` };
+    return {
+      score: 0,
+      detail: `${count} tickets in last 30 days (high volume)`,
+    };
   }
 
   private scoreResolutionTime(
@@ -219,11 +226,30 @@ export class HealthService {
 
     const avgHours = totalHours / resolved.length;
 
-    if (avgHours < 2) return { score: 20, detail: `Avg resolution ${avgHours.toFixed(1)}h (< 2h)` };
-    if (avgHours < 8) return { score: 15, detail: `Avg resolution ${avgHours.toFixed(1)}h (< 8h)` };
-    if (avgHours < 24) return { score: 10, detail: `Avg resolution ${avgHours.toFixed(1)}h (< 24h)` };
-    if (avgHours < 72) return { score: 5, detail: `Avg resolution ${avgHours.toFixed(1)}h (< 72h)` };
-    return { score: 0, detail: `Avg resolution ${avgHours.toFixed(1)}h (72h+)` };
+    if (avgHours < 2)
+      return {
+        score: 20,
+        detail: `Avg resolution ${avgHours.toFixed(1)}h (< 2h)`,
+      };
+    if (avgHours < 8)
+      return {
+        score: 15,
+        detail: `Avg resolution ${avgHours.toFixed(1)}h (< 8h)`,
+      };
+    if (avgHours < 24)
+      return {
+        score: 10,
+        detail: `Avg resolution ${avgHours.toFixed(1)}h (< 24h)`,
+      };
+    if (avgHours < 72)
+      return {
+        score: 5,
+        detail: `Avg resolution ${avgHours.toFixed(1)}h (< 72h)`,
+      };
+    return {
+      score: 0,
+      detail: `Avg resolution ${avgHours.toFixed(1)}h (72h+)`,
+    };
   }
 
   private scoreSatisfaction(
@@ -253,16 +279,18 @@ export class HealthService {
 
   private satisfactionScoreFromRating(rating: number): HealthScoreFactor {
     const rounded = Math.round(rating);
-    if (rounded >= 5) return { score: 20, detail: `${rating.toFixed(1)}/5 stars` };
-    if (rounded === 4) return { score: 15, detail: `${rating.toFixed(1)}/5 stars` };
-    if (rounded === 3) return { score: 10, detail: `${rating.toFixed(1)}/5 stars` };
-    if (rounded === 2) return { score: 5, detail: `${rating.toFixed(1)}/5 stars` };
+    if (rounded >= 5)
+      return { score: 20, detail: `${rating.toFixed(1)}/5 stars` };
+    if (rounded === 4)
+      return { score: 15, detail: `${rating.toFixed(1)}/5 stars` };
+    if (rounded === 3)
+      return { score: 10, detail: `${rating.toFixed(1)}/5 stars` };
+    if (rounded === 2)
+      return { score: 5, detail: `${rating.toFixed(1)}/5 stars` };
     return { score: 0, detail: `${rating.toFixed(1)}/5 stars` };
   }
 
-  private scoreSentiment(
-    tickets: Array<{ metadata: any }>,
-  ): HealthScoreFactor {
+  private scoreSentiment(tickets: Array<{ metadata: any }>): HealthScoreFactor {
     const sentiments: string[] = [];
 
     for (const ticket of tickets) {
@@ -280,11 +308,26 @@ export class HealthService {
     }
 
     if (sentiments.length === 0) {
-      return { score: 20, detail: 'No sentiment data available (assumed neutral)' };
+      return {
+        score: 20,
+        detail: 'No sentiment data available (assumed neutral)',
+      };
     }
 
-    const negativeKeywords = ['negative', 'frustrated', 'angry', 'upset', 'unhappy'];
-    const positiveKeywords = ['positive', 'happy', 'satisfied', 'great', 'good'];
+    const negativeKeywords = [
+      'negative',
+      'frustrated',
+      'angry',
+      'upset',
+      'unhappy',
+    ];
+    const positiveKeywords = [
+      'positive',
+      'happy',
+      'satisfied',
+      'great',
+      'good',
+    ];
 
     const negativeCount = sentiments.filter((s) =>
       negativeKeywords.some((k) => s.includes(k)),
@@ -297,17 +340,24 @@ export class HealthService {
     const negativeRatio = negativeCount / total;
 
     if (negativeRatio > 0.5) {
-      return { score: 0, detail: `Mostly negative sentiment (${negativeCount}/${total} tickets)` };
+      return {
+        score: 0,
+        detail: `Mostly negative sentiment (${negativeCount}/${total} tickets)`,
+      };
     }
     if (negativeRatio > 0) {
-      return { score: 10, detail: `Mixed sentiment (${negativeCount} negative, ${positiveCount} positive)` };
+      return {
+        score: 10,
+        detail: `Mixed sentiment (${negativeCount} negative, ${positiveCount} positive)`,
+      };
     }
-    return { score: 20, detail: `Positive/neutral sentiment across ${total} ticket${total > 1 ? 's' : ''}` };
+    return {
+      score: 20,
+      detail: `Positive/neutral sentiment across ${total} ticket${total > 1 ? 's' : ''}`,
+    };
   }
 
-  private scoreRecency(
-    tickets: Array<{ createdAt: Date }>,
-  ): HealthScoreFactor {
+  private scoreRecency(tickets: Array<{ createdAt: Date }>): HealthScoreFactor {
     if (tickets.length === 0) {
       return { score: 20, detail: 'No tickets ever (new customer)' };
     }
@@ -321,10 +371,14 @@ export class HealthService {
     const diffMs = now.getTime() - lastDate.getTime();
     const diffDays = diffMs / 86_400_000;
 
-    if (diffDays > 30) return { score: 20, detail: `Last ticket ${Math.round(diffDays)}d ago` };
-    if (diffDays >= 7) return { score: 15, detail: `Last ticket ${Math.round(diffDays)}d ago` };
-    if (diffDays >= 3) return { score: 10, detail: `Last ticket ${Math.round(diffDays)}d ago` };
-    if (diffDays >= 1) return { score: 5, detail: `Last ticket ${Math.round(diffDays)}d ago` };
+    if (diffDays > 30)
+      return { score: 20, detail: `Last ticket ${Math.round(diffDays)}d ago` };
+    if (diffDays >= 7)
+      return { score: 15, detail: `Last ticket ${Math.round(diffDays)}d ago` };
+    if (diffDays >= 3)
+      return { score: 10, detail: `Last ticket ${Math.round(diffDays)}d ago` };
+    if (diffDays >= 1)
+      return { score: 5, detail: `Last ticket ${Math.round(diffDays)}d ago` };
     return { score: 0, detail: 'Active ticket today' };
   }
 
@@ -359,7 +413,10 @@ export class HealthService {
       level,
       factors: {
         ticketVolume: { score: ticketVolumeScore, detail: ticketVolumeDetail },
-        resolutionTime: { score: resolutionTimeScore, detail: resolutionTimeDetail },
+        resolutionTime: {
+          score: resolutionTimeScore,
+          detail: resolutionTimeDetail,
+        },
         satisfaction: { score: satisfactionScore, detail: satisfactionDetail },
         sentiment: { score: sentimentScore, detail: sentimentDetail },
         recency: { score: recencyScore, detail: recencyDetail },

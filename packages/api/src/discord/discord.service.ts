@@ -32,7 +32,9 @@ export class DiscordService implements OnModuleInit {
   async onModuleInit() {
     const botToken = this.config.get<string>('DISCORD_BOT_TOKEN');
     if (!botToken) {
-      this.logger.warn('DISCORD_BOT_TOKEN not found, Discord bot will not start');
+      this.logger.warn(
+        'DISCORD_BOT_TOKEN not found, Discord bot will not start',
+      );
       return;
     }
 
@@ -65,7 +67,10 @@ export class DiscordService implements OnModuleInit {
     this.client.on('messageCreate', async (message) => {
       try {
         if (message.author.bot) return;
-        if (message.channel.type === ChannelType.PublicThread || message.channel.type === ChannelType.PrivateThread) {
+        if (
+          message.channel.type === ChannelType.PublicThread ||
+          message.channel.type === ChannelType.PrivateThread
+        ) {
           await this.handleThreadMessage(message);
         }
       } catch (error) {
@@ -80,7 +85,11 @@ export class DiscordService implements OnModuleInit {
     }
   }
 
-  async createSupportPanel(guildId: string, channelId: string, tenantId: string) {
+  async createSupportPanel(
+    guildId: string,
+    channelId: string,
+    tenantId: string,
+  ) {
     if (!this.isReady) {
       throw new Error('Discord bot is not ready');
     }
@@ -94,8 +103,10 @@ export class DiscordService implements OnModuleInit {
 
     const embed = new EmbedBuilder()
       .setTitle('Support Ticket System')
-      .setDescription('Click the button below to create a support ticket. Our team will respond as soon as possible.')
-      .setColor(0x5865F2);
+      .setDescription(
+        'Click the button below to create a support ticket. Our team will respond as soon as possible.',
+      )
+      .setColor(0x5865f2);
 
     const button = new ButtonBuilder()
       .setCustomId(`create_ticket:${tenantId}`)
@@ -136,8 +147,11 @@ export class DiscordService implements OnModuleInit {
       .setRequired(true)
       .setMaxLength(2000);
 
-    const subjectRow = new ActionRowBuilder<TextInputBuilder>().addComponents(subjectInput);
-    const descriptionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(descriptionInput);
+    const subjectRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
+      subjectInput,
+    );
+    const descriptionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(descriptionInput);
 
     modal.addComponents(subjectRow, descriptionRow);
 
@@ -213,15 +227,23 @@ export class DiscordService implements OnModuleInit {
         .addFields(
           { name: 'Subject', value: subject },
           { name: 'Status', value: 'Open', inline: true },
-          { name: 'Created By', value: interaction.user.username, inline: true },
+          {
+            name: 'Created By',
+            value: interaction.user.username,
+            inline: true,
+          },
         )
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setTimestamp();
 
       await thread.send({ embeds: [welcomeEmbed] });
 
       this.eventEmitter.emit('ticket.created', { tenantId, ticket });
-      this.eventEmitter.emit('message.created', { tenantId, message, ticketId: ticket.id });
+      this.eventEmitter.emit('message.created', {
+        tenantId,
+        message,
+        ticketId: ticket.id,
+      });
 
       await interaction.editReply({
         content: `Ticket created successfully! Please check <#${thread.id}>`,
@@ -229,7 +251,8 @@ export class DiscordService implements OnModuleInit {
     } catch (error) {
       this.logger.error('Error creating ticket from modal:', error);
       await interaction.editReply({
-        content: 'An error occurred while creating your ticket. Please try again later.',
+        content:
+          'An error occurred while creating your ticket. Please try again later.',
       });
     }
   }
@@ -272,7 +295,9 @@ export class DiscordService implements OnModuleInit {
           tenantId: ticket.tenantId,
           ticketId: ticket.id,
           contactId: isFromContact ? contact.id : null,
-          direction: isFromContact ? MessageDirection.INBOUND : MessageDirection.OUTBOUND,
+          direction: isFromContact
+            ? MessageDirection.INBOUND
+            : MessageDirection.OUTBOUND,
           contentText: message.content,
           messageType: MessageType.TEXT,
           externalId: message.id,

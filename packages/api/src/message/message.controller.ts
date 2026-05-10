@@ -29,7 +29,12 @@ export class MessageController {
     @Param('ticketId') ticketId: string,
     @Body() createMessageDto: CreateMessageDto,
   ) {
-    return this.messageService.create(tenantId, ticketId, userId, createMessageDto);
+    return this.messageService.create(
+      tenantId,
+      ticketId,
+      userId,
+      createMessageDto,
+    );
   }
 
   @Get()

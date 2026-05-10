@@ -6,7 +6,8 @@ export const TICKET_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'get_ticket',
-      description: 'Get full ticket details including messages and contact info',
+      description:
+        'Get full ticket details including messages and contact info',
       parameters: {
         type: 'object',
         properties: {
@@ -61,7 +62,8 @@ export const TICKET_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'add_note',
-      description: 'Add an internal note to a ticket (not visible to the customer)',
+      description:
+        'Add an internal note to a ticket (not visible to the customer)',
       parameters: {
         type: 'object',
         properties: {
@@ -79,7 +81,8 @@ export const TICKET_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'search_tickets',
-      description: 'Search for related or similar tickets by subject or message content',
+      description:
+        'Search for related or similar tickets by subject or message content',
       parameters: {
         type: 'object',
         properties: {
@@ -134,13 +137,15 @@ export const TICKET_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'get_canned_responses',
-      description: 'Retrieve saved canned responses, optionally filtered by a search query',
+      description:
+        'Retrieve saved canned responses, optionally filtered by a search query',
       parameters: {
         type: 'object',
         properties: {
           query: {
             type: 'string',
-            description: 'Optional search term to filter canned responses by title or content',
+            description:
+              'Optional search term to filter canned responses by title or content',
           },
         },
         required: [],
@@ -197,7 +202,10 @@ export const TICKET_TOOLS = [
         type: 'object',
         properties: {
           ticketId: { type: 'string' },
-          teamId: { type: 'string', description: 'The ID of the team to assign the ticket to' },
+          teamId: {
+            type: 'string',
+            description: 'The ID of the team to assign the ticket to',
+          },
         },
         required: ['ticketId', 'teamId'],
       },
@@ -354,7 +362,9 @@ export async function executeToolCall(
           { subject: { contains: args.query, mode: 'insensitive' } },
           {
             messages: {
-              some: { contentText: { contains: args.query, mode: 'insensitive' } },
+              some: {
+                contentText: { contains: args.query, mode: 'insensitive' },
+              },
             },
           },
         ],
@@ -373,7 +383,9 @@ export async function executeToolCall(
           createdAt: true,
           tags: true,
           messages: {
-            where: { contentText: { contains: args.query, mode: 'insensitive' } },
+            where: {
+              contentText: { contains: args.query, mode: 'insensitive' },
+            },
             take: 1,
             orderBy: { createdAt: 'asc' },
             select: { contentText: true },
@@ -390,7 +402,9 @@ export async function executeToolCall(
           createdAt: t.createdAt,
           tags: t.tags,
           matchingSnippet:
-            t.messages.length > 0 ? t.messages[0].contentText.slice(0, 200) : undefined,
+            t.messages.length > 0
+              ? t.messages[0].contentText.slice(0, 200)
+              : undefined,
         })),
       });
     }

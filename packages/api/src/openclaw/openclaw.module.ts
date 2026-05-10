@@ -14,11 +14,7 @@ import { OpenclawListener } from './openclaw.listener';
     BullModule.registerQueue({ name: 'openclaw-agent' }),
   ],
   controllers: [OpenclawController],
-  providers: [
-    OpenclawService,
-    OpenclawAgentProcessor,
-    OpenclawListener,
-  ],
+  providers: [OpenclawService, OpenclawAgentProcessor, OpenclawListener],
   exports: [OpenclawService],
 })
 export class OpenclawModule {}

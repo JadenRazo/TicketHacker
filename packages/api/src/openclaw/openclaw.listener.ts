@@ -41,9 +41,7 @@ export class OpenclawListener {
         },
       );
 
-      this.logger.log(
-        `Queued OpenClaw triage for ticket ${ticket.id}`,
-      );
+      this.logger.log(`Queued OpenClaw triage for ticket ${ticket.id}`);
     } catch (error) {
       this.logger.error(
         `Failed to queue OpenClaw triage for ticket ${ticket.id}`,
@@ -75,10 +73,7 @@ export class OpenclawListener {
 
       const agentMode = settings.openclawAgentMode || 'copilot';
 
-      if (
-        ticket.channel === 'CHAT_WIDGET' &&
-        settings.openclawWidgetAgent
-      ) {
+      if (ticket.channel === 'CHAT_WIDGET' && settings.openclawWidgetAgent) {
         const action = settings.openclawWidgetResolve
           ? 'resolve-attempt'
           : 'auto-reply';
@@ -155,9 +150,7 @@ export class OpenclawListener {
           },
         );
 
-        this.logger.log(
-          `Queued OpenClaw auto-reply for ticket ${ticketId}`,
-        );
+        this.logger.log(`Queued OpenClaw auto-reply for ticket ${ticketId}`);
       } else if (agentMode === 'copilot') {
         const shouldAutoSuggest = settings.openclawAutoSuggest !== false; // default true
         if (shouldAutoSuggest) {

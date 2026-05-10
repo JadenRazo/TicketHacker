@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMacroDto } from './dto/create-macro.dto';
 import { UpdateMacroDto } from './dto/update-macro.dto';
@@ -127,7 +131,12 @@ export class MacroService {
     return { message: 'Macro deleted successfully' };
   }
 
-  async execute(tenantId: string, userId: string, macroId: string, ticketId: string) {
+  async execute(
+    tenantId: string,
+    userId: string,
+    macroId: string,
+    ticketId: string,
+  ) {
     const macro = await this.prisma.macro.findUnique({
       where: { id: macroId },
     });
@@ -174,7 +183,9 @@ export class MacroService {
           if (!updateData.tags) {
             updateData.tags = [...(ticket.tags || [])];
           }
-          updateData.tags = updateData.tags.filter((tag: string) => tag !== action.value);
+          updateData.tags = updateData.tags.filter(
+            (tag: string) => tag !== action.value,
+          );
           break;
         case 'send_reply':
           messages.push({

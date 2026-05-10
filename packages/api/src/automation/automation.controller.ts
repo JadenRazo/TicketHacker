@@ -37,10 +37,7 @@ export class AutomationController {
   }
 
   @Get(':id')
-  findOne(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.automationService.findOne(tenantId, id);
   }
 
@@ -54,10 +51,7 @@ export class AutomationController {
   }
 
   @Delete(':id')
-  remove(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.automationService.remove(tenantId, id);
   }
 }

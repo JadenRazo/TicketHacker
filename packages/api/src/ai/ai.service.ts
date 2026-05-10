@@ -36,12 +36,17 @@ export class AiService {
   private readonly enabled: boolean;
 
   constructor(private config: ConfigService) {
-    this.apiUrl = this.config.get<string>('OPENCLAW_API_URL', 'http://localhost:11434/v1');
+    this.apiUrl = this.config.get<string>(
+      'OPENCLAW_API_URL',
+      'http://localhost:11434/v1',
+    );
     this.apiKey = this.config.get<string>('OPENCLAW_API_KEY', '');
     this.enabled = !!this.apiUrl;
 
     if (!this.enabled) {
-      this.logger.warn('OpenClaw AI is not configured. AI features will be disabled.');
+      this.logger.warn(
+        'OpenClaw AI is not configured. AI features will be disabled.',
+      );
     }
   }
 

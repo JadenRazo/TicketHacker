@@ -44,7 +44,10 @@ describe('UploadService', () => {
     });
 
     it('should reject disallowed MIME types', async () => {
-      const file = mockFile({ mimetype: 'application/javascript', path: '/tmp/fake.js' });
+      const file = mockFile({
+        mimetype: 'application/javascript',
+        path: '/tmp/fake.js',
+      });
 
       await expect(service.saveUpload('tenant-1', file)).rejects.toThrow(
         BadRequestException,
@@ -98,8 +101,12 @@ describe('UploadService', () => {
   describe('resolveFilePath', () => {
     it('should return null for path traversal attempts', () => {
       expect(service.resolveFilePath('tenant-1', '../etc/passwd')).toBeNull();
-      expect(service.resolveFilePath('tenant-1', 'file/../../etc/passwd')).toBeNull();
-      expect(service.resolveFilePath('tenant-1', '..\\windows\\system32')).toBeNull();
+      expect(
+        service.resolveFilePath('tenant-1', 'file/../../etc/passwd'),
+      ).toBeNull();
+      expect(
+        service.resolveFilePath('tenant-1', '..\\windows\\system32'),
+      ).toBeNull();
     });
   });
 

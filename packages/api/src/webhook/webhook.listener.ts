@@ -9,7 +9,10 @@ export class WebhookListener {
   constructor(private readonly webhookService: WebhookService) {}
 
   @OnEvent('ticket.created')
-  async handleTicketCreated(payload: { tenantId: string; ticket: any }): Promise<void> {
+  async handleTicketCreated(payload: {
+    tenantId: string;
+    ticket: any;
+  }): Promise<void> {
     try {
       await this.webhookService.queueDeliveries(
         payload.tenantId,
@@ -21,12 +24,18 @@ export class WebhookListener {
         },
       );
     } catch (error) {
-      this.logger.error('Failed to queue webhook deliveries for ticket.created', error);
+      this.logger.error(
+        'Failed to queue webhook deliveries for ticket.created',
+        error,
+      );
     }
   }
 
   @OnEvent('ticket.updated')
-  async handleTicketUpdated(payload: { tenantId: string; ticket: any }): Promise<void> {
+  async handleTicketUpdated(payload: {
+    tenantId: string;
+    ticket: any;
+  }): Promise<void> {
     try {
       await this.webhookService.queueDeliveries(
         payload.tenantId,
@@ -38,7 +47,10 @@ export class WebhookListener {
         },
       );
     } catch (error) {
-      this.logger.error('Failed to queue webhook deliveries for ticket.updated', error);
+      this.logger.error(
+        'Failed to queue webhook deliveries for ticket.updated',
+        error,
+      );
     }
   }
 
@@ -60,12 +72,18 @@ export class WebhookListener {
         },
       );
     } catch (error) {
-      this.logger.error('Failed to queue webhook deliveries for message.created', error);
+      this.logger.error(
+        'Failed to queue webhook deliveries for message.created',
+        error,
+      );
     }
   }
 
   @OnEvent('sla.breached')
-  async handleSlaBreached(payload: { tenantId: string; ticket: any }): Promise<void> {
+  async handleSlaBreached(payload: {
+    tenantId: string;
+    ticket: any;
+  }): Promise<void> {
     try {
       await this.webhookService.queueDeliveries(
         payload.tenantId,
@@ -77,7 +95,10 @@ export class WebhookListener {
         },
       );
     } catch (error) {
-      this.logger.error('Failed to queue webhook deliveries for sla.breached', error);
+      this.logger.error(
+        'Failed to queue webhook deliveries for sla.breached',
+        error,
+      );
     }
   }
 

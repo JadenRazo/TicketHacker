@@ -1,4 +1,11 @@
-import { IsUrl, IsArray, IsString, IsOptional, ArrayNotEmpty, IsIn } from 'class-validator';
+import {
+  IsUrl,
+  IsArray,
+  IsString,
+  IsOptional,
+  ArrayNotEmpty,
+  IsIn,
+} from 'class-validator';
 
 const SUPPORTED_EVENTS = [
   'ticket.created',

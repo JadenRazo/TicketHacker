@@ -3,10 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  TICKET_TOOLS,
-  executeToolCall,
-} from './tools/ticket-tools';
+import { TICKET_TOOLS, executeToolCall } from './tools/ticket-tools';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -117,7 +114,10 @@ export class OpenclawService {
         select: { name: true, settings: true },
       });
     } catch (error) {
-      this.logger.warn(`buildTenantContext: failed to fetch tenant ${tenantId}`, error);
+      this.logger.warn(
+        `buildTenantContext: failed to fetch tenant ${tenantId}`,
+        error,
+      );
     }
 
     const settings = (tenant?.settings as Record<string, any>) ?? {};
@@ -128,9 +128,15 @@ export class OpenclawService {
     parts.push(
       `Business Hours: ${bh.startTime ?? '09:00'}-${bh.endTime ?? '17:00'} (${bh.timezone ?? 'UTC'}), ${Array.isArray(bh.workDays) ? bh.workDays.join(', ') : 'Mon, Tue, Wed, Thu, Fri'}`,
     );
-    parts.push(`Tone: ${settings.tonePreference ?? 'professional and helpful'}`);
-    parts.push(`SLA First Response Target: ${settings.slaFirstResponse ?? 'not set'} minutes`);
-    parts.push(`SLA Resolution Target: ${settings.slaResolution ?? 'not set'} minutes`);
+    parts.push(
+      `Tone: ${settings.tonePreference ?? 'professional and helpful'}`,
+    );
+    parts.push(
+      `SLA First Response Target: ${settings.slaFirstResponse ?? 'not set'} minutes`,
+    );
+    parts.push(
+      `SLA Resolution Target: ${settings.slaResolution ?? 'not set'} minutes`,
+    );
 
     // Fetch available teams
     let teams: Array<{ name: string; description: string | null }> = [];
@@ -140,28 +146,46 @@ export class OpenclawService {
         select: { name: true, description: true },
       });
     } catch (error) {
-      this.logger.warn(`buildTenantContext: failed to fetch teams for tenant ${tenantId}`, error);
+      this.logger.warn(
+        `buildTenantContext: failed to fetch teams for tenant ${tenantId}`,
+        error,
+      );
     }
 
     parts.push('');
     parts.push('## Available Teams');
     if (teams.length > 0) {
       parts.push(
-        teams.map((t) => `- ${t.name}: ${t.description ?? 'No description'}`).join('\n'),
+        teams
+          .map((t) => `- ${t.name}: ${t.description ?? 'No description'}`)
+          .join('\n'),
       );
     } else {
       parts.push('- No teams configured');
     }
 
     // Fetch custom field definitions
-    let fields: Array<{ name: string; fieldType: string; isRequired: boolean; options: any }> = [];
+    let fields: Array<{
+      name: string;
+      fieldType: string;
+      isRequired: boolean;
+      options: any;
+    }> = [];
     try {
       fields = await this.prisma.customFieldDefinition.findMany({
         where: { tenantId },
-        select: { name: true, fieldType: true, isRequired: true, options: true },
+        select: {
+          name: true,
+          fieldType: true,
+          isRequired: true,
+          options: true,
+        },
       });
     } catch (error) {
-      this.logger.warn(`buildTenantContext: failed to fetch custom fields for tenant ${tenantId}`, error);
+      this.logger.warn(
+        `buildTenantContext: failed to fetch custom fields for tenant ${tenantId}`,
+        error,
+      );
     }
 
     parts.push('');
@@ -214,7 +238,8 @@ export class OpenclawService {
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const [endHour, endMinute] = endTime.split(':').map(Number);
 
-    const currentMinutes = parseInt(hourPart, 10) * 60 + parseInt(minutePart, 10);
+    const currentMinutes =
+      parseInt(hourPart, 10) * 60 + parseInt(minutePart, 10);
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
 
@@ -232,12 +257,16 @@ export class OpenclawService {
     });
 
     if (!ticket) {
-      this.logger.warn(`appendAiActivity: ticket ${ticketId} not found for tenant ${tenantId}`);
+      this.logger.warn(
+        `appendAiActivity: ticket ${ticketId} not found for tenant ${tenantId}`,
+      );
       return;
     }
 
     const meta = (ticket.metadata as Record<string, any>) ?? {};
-    const log: any[] = Array.isArray(meta.aiActivityLog) ? meta.aiActivityLog : [];
+    const log: any[] = Array.isArray(meta.aiActivityLog)
+      ? meta.aiActivityLog
+      : [];
 
     log.push({
       id: randomUUID(),
@@ -329,7 +358,9 @@ export class OpenclawService {
           toolArgs = {};
         }
 
-        this.logger.debug(`Agent calling tool: ${toolName}(${JSON.stringify(toolArgs)})`);
+        this.logger.debug(
+          `Agent calling tool: ${toolName}(${JSON.stringify(toolArgs)})`,
+        );
 
         const result = await executeToolCall(
           toolName,
@@ -593,7 +624,9 @@ Return ONLY a JSON object:
         const result = payload?.result as Partial<AgentResult> | undefined;
 
         if (!result) {
-          this.logger.warn(`agent.completed for ticket ${ticketId} had no result payload`);
+          this.logger.warn(
+            `agent.completed for ticket ${ticketId} had no result payload`,
+          );
           return;
         }
 
@@ -611,7 +644,10 @@ Return ONLY a JSON object:
         if (result.action === 'resolved') {
           updateData.status = 'RESOLVED';
           updateData.resolvedAt = new Date();
-        } else if (result.action === 'escalated' || result.action === 'needs_human') {
+        } else if (
+          result.action === 'escalated' ||
+          result.action === 'needs_human'
+        ) {
           updateData.status = 'OPEN';
         }
 
@@ -641,7 +677,11 @@ Return ONLY a JSON object:
             },
           });
 
-          this.eventEmitter.emit('message.created', { tenantId, ticketId, message: note });
+          this.eventEmitter.emit('message.created', {
+            tenantId,
+            ticketId,
+            message: note,
+          });
         }
 
         this.logger.log(
@@ -651,7 +691,8 @@ Return ONLY a JSON object:
       }
 
       case 'agent.failed': {
-        const errorMessage = payload?.error ?? 'Agent encountered an unknown error';
+        const errorMessage =
+          payload?.error ?? 'Agent encountered an unknown error';
         const errorCode = payload?.code ?? 'UNKNOWN';
 
         this.logger.error(
@@ -668,7 +709,11 @@ Return ONLY a JSON object:
           },
         });
 
-        this.eventEmitter.emit('message.created', { tenantId, ticketId, message: systemMsg });
+        this.eventEmitter.emit('message.created', {
+          tenantId,
+          ticketId,
+          message: systemMsg,
+        });
         break;
       }
 
@@ -676,7 +721,9 @@ Return ONLY a JSON object:
         const content = payload?.content as string | undefined;
 
         if (!content) {
-          this.logger.warn(`agent.reply_sent for ticket ${ticketId} had no content`);
+          this.logger.warn(
+            `agent.reply_sent for ticket ${ticketId} had no content`,
+          );
           return;
         }
 
@@ -694,7 +741,11 @@ Return ONLY a JSON object:
           },
         });
 
-        this.eventEmitter.emit('message.created', { tenantId, ticketId, message: reply });
+        this.eventEmitter.emit('message.created', {
+          tenantId,
+          ticketId,
+          message: reply,
+        });
 
         this.logger.log(`agent.reply_sent recorded for ticket ${ticketId}`);
         break;
@@ -718,7 +769,10 @@ Return ONLY a JSON object:
           },
         });
 
-        this.eventEmitter.emit('ticket.updated', { tenantId, ticket: escalatedTicket });
+        this.eventEmitter.emit('ticket.updated', {
+          tenantId,
+          ticket: escalatedTicket,
+        });
 
         const escalationNote = await this.prisma.message.create({
           data: {
@@ -730,7 +784,11 @@ Return ONLY a JSON object:
           },
         });
 
-        this.eventEmitter.emit('message.created', { tenantId, ticketId, message: escalationNote });
+        this.eventEmitter.emit('message.created', {
+          tenantId,
+          ticketId,
+          message: escalationNote,
+        });
 
         this.logger.log(`agent.escalated for ticket ${ticketId}: ${reason}`);
         break;
@@ -781,7 +839,10 @@ Return ONLY a JSON object:
     toolCalls: AgentResult['toolCalls'],
   ): AgentResult {
     try {
-      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const cleaned = content
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
       const parsed = JSON.parse(cleaned);
       return {
         action: parsed.action || 'needs_human',

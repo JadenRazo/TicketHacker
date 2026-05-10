@@ -46,10 +46,7 @@ export class CustomFieldController {
   }
 
   @Delete(':id')
-  remove(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.customFieldService.remove(tenantId, id);
   }
 }

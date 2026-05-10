@@ -28,8 +28,14 @@ export class OpenclawAgentProcessor extends WorkerHost {
   }
 
   async process(job: Job<OpenclawJobData>) {
-    const { action, ticketId, tenantId, model, customerMessage, confidenceThreshold } =
-      job.data;
+    const {
+      action,
+      ticketId,
+      tenantId,
+      model,
+      customerMessage,
+      confidenceThreshold,
+    } = job.data;
     this.logger.log(
       `Processing OpenClaw agent task: ${action} for ticket ${ticketId}`,
     );
@@ -46,9 +52,7 @@ export class OpenclawAgentProcessor extends WorkerHost {
 
       const settings = tenant.settings as any;
       if (!settings?.openclawEnabled) {
-        this.logger.debug(
-          `OpenClaw disabled for tenant ${tenantId}, skipping`,
-        );
+        this.logger.debug(`OpenClaw disabled for tenant ${tenantId}, skipping`);
         return;
       }
 

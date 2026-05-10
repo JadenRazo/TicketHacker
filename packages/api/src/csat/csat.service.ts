@@ -41,7 +41,10 @@ export class CsatService {
     return since;
   }
 
-  async getRatings(tenantId: string, period = '30d'): Promise<RatingWithRelations[]> {
+  async getRatings(
+    tenantId: string,
+    period = '30d',
+  ): Promise<RatingWithRelations[]> {
     const since = this.parsePeriodStart(period);
 
     return this.prisma.ticketRating.findMany({
@@ -60,7 +63,7 @@ export class CsatService {
         },
       },
       orderBy: { createdAt: 'desc' },
-    }) as unknown as RatingWithRelations[];
+    });
   }
 
   async getSummary(tenantId: string, period = '30d') {
@@ -110,11 +113,13 @@ export class CsatService {
       byDay.set(day, existing);
     }
 
-    const trend: TrendPoint[] = Array.from(byDay.entries()).map(([date, data]) => ({
-      date,
-      average: Math.round((data.sum / data.count) * 10) / 10,
-      count: data.count,
-    }));
+    const trend: TrendPoint[] = Array.from(byDay.entries()).map(
+      ([date, data]) => ({
+        date,
+        average: Math.round((data.sum / data.count) * 10) / 10,
+        count: data.count,
+      }),
+    );
 
     return { average, total, distribution, trend };
   }

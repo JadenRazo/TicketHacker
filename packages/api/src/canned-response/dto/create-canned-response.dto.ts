@@ -1,4 +1,10 @@
-import { IsString, MaxLength, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsOptional,
+  IsEnum,
+  IsUUID,
+} from 'class-validator';
 import { CannedResponseScope } from '@prisma/client';
 
 export class CreateCannedResponseDto {

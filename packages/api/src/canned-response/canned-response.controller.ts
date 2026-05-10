@@ -51,10 +51,7 @@ export class CannedResponseController {
   }
 
   @Get(':id')
-  findOne(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.cannedResponseService.findOne(tenantId, id);
   }
 
@@ -68,10 +65,7 @@ export class CannedResponseController {
   }
 
   @Delete(':id')
-  remove(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.cannedResponseService.remove(tenantId, id);
   }
 }

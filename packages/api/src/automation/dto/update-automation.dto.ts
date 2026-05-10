@@ -1,4 +1,11 @@
-import { IsString, MaxLength, IsObject, IsOptional, IsBoolean, IsInt } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsObject,
+  IsOptional,
+  IsBoolean,
+  IsInt,
+} from 'class-validator';
 
 export class UpdateAutomationDto {
   @IsOptional()

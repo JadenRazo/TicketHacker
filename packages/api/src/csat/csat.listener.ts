@@ -84,14 +84,17 @@ export class CsatListener {
       this.logger.log(
         `Scheduling CSAT survey for ticket ${ticket.id} in ${delayMinutes} minute(s)`,
       );
-      setTimeout(() => {
-        this.triggerSurvey(tenantId, ticket).catch((err) =>
-          this.logger.error(
-            `Delayed CSAT survey failed for ticket ${ticket.id}`,
-            err,
-          ),
-        );
-      }, delayMinutes * 60 * 1000);
+      setTimeout(
+        () => {
+          this.triggerSurvey(tenantId, ticket).catch((err) =>
+            this.logger.error(
+              `Delayed CSAT survey failed for ticket ${ticket.id}`,
+              err,
+            ),
+          );
+        },
+        delayMinutes * 60 * 1000,
+      );
     } else {
       await this.triggerSurvey(tenantId, ticket);
     }

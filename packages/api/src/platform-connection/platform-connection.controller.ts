@@ -37,10 +37,7 @@ export class PlatformConnectionController {
   }
 
   @Get(':id')
-  findOne(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.platformConnectionService.findOne(tenantId, id);
   }
 
@@ -54,10 +51,7 @@ export class PlatformConnectionController {
   }
 
   @Delete(':id')
-  remove(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.platformConnectionService.remove(tenantId, id);
   }
 }

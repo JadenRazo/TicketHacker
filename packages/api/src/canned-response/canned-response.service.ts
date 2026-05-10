@@ -8,11 +8,7 @@ import { CannedResponseScope } from '@prisma/client';
 export class CannedResponseService {
   constructor(private prisma: PrismaService) {}
 
-  async create(
-    tenantId: string,
-    userId: string,
-    dto: CreateCannedResponseDto,
-  ) {
+  async create(tenantId: string, userId: string, dto: CreateCannedResponseDto) {
     return this.prisma.cannedResponse.create({
       data: {
         tenantId,

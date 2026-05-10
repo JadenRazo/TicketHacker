@@ -65,7 +65,9 @@ export class UploadController {
     @Body('messageId') messageId?: string,
   ) {
     if (!file) {
-      throw new BadRequestException('No file provided. Send a multipart/form-data request with field name "file".');
+      throw new BadRequestException(
+        'No file provided. Send a multipart/form-data request with field name "file".',
+      );
     }
 
     return this.uploadService.saveUpload(tenantId, file, messageId);
@@ -100,11 +102,13 @@ export class UploadController {
       '.webp': 'image/webp',
       '.pdf': 'application/pdf',
       '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.docx':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       '.txt': 'text/plain',
       '.csv': 'text/csv',
       '.xls': 'application/vnd.ms-excel',
-      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.xlsx':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       '.zip': 'application/zip',
     };
 
@@ -112,10 +116,19 @@ export class UploadController {
 
     res.setHeader('Content-Type', contentType);
     const safeInlineTypes = new Set([
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/pdf',
     ]);
-    const disposition = safeInlineTypes.has(contentType) ? 'inline' : 'attachment';
-    res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+    const disposition = safeInlineTypes.has(contentType)
+      ? 'inline'
+      : 'attachment';
+    res.setHeader(
+      'Content-Disposition',
+      `${disposition}; filename="${filename}"`,
+    );
     res.setHeader('Cache-Control', 'private, max-age=86400');
 
     const stream = fs.createReadStream(filePath);

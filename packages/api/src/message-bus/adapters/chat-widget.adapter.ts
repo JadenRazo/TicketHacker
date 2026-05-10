@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  ChannelAdapter,
-  UnifiedMessage,
-} from '../channel-adapter.interface';
+import { ChannelAdapter, UnifiedMessage } from '../channel-adapter.interface';
 
 @Injectable()
 export class ChatWidgetAdapter implements ChannelAdapter {
@@ -19,9 +16,7 @@ export class ChatWidgetAdapter implements ChannelAdapter {
     };
   }
 
-  async sendOutbound(
-    message: UnifiedMessage,
-  ): Promise<string | null> {
+  async sendOutbound(message: UnifiedMessage): Promise<string | null> {
     // Chat widget messages are delivered via Socket.IO, no external API call needed
     return null;
   }

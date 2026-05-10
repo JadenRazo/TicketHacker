@@ -43,7 +43,13 @@ export class UploadService {
   private readonly MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
   // Base directory for uploads — two levels up from dist/src, landing at project root/uploads
-  private readonly uploadsRoot = path.join(__dirname, '..', '..', '..', 'uploads');
+  private readonly uploadsRoot = path.join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    'uploads',
+  );
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -119,7 +125,11 @@ export class UploadService {
    */
   resolveFilePath(tenantId: string, filename: string): string | null {
     // Prevent path traversal — filename must not contain directory separators
-    if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+    if (
+      filename.includes('/') ||
+      filename.includes('\\') ||
+      filename.includes('..')
+    ) {
       return null;
     }
     const filePath = path.join(this.uploadsRoot, tenantId, filename);
@@ -156,7 +166,9 @@ export class UploadService {
         fs.unlinkSync(filePath);
       }
     } catch (err) {
-      this.logger.warn(`Failed to clean up file at ${filePath}: ${String(err)}`);
+      this.logger.warn(
+        `Failed to clean up file at ${filePath}: ${String(err)}`,
+      );
     }
   }
 }

@@ -146,8 +146,8 @@ export class KnowledgeBaseService implements OnModuleInit {
     });
 
     // Regenerate embedding when title or content changes
-    const newTitle = (dto.title ?? existing.title) as string;
-    const newContent = (dto.content ?? existing.content) as string;
+    const newTitle = dto.title ?? existing.title;
+    const newContent = dto.content ?? existing.content;
     if (dto.title !== undefined || dto.content !== undefined) {
       this.generateAndStoreEmbedding(id, newTitle, newContent).catch(() => {
         // Already logged inside the method
@@ -250,11 +250,7 @@ export class KnowledgeBaseService implements OnModuleInit {
     return article;
   }
 
-  async submitFeedback(
-    tenantId: string,
-    slug: string,
-    helpful: boolean,
-  ) {
+  async submitFeedback(tenantId: string, slug: string, helpful: boolean) {
     const article = await this.prisma.article.findUnique({
       where: { tenantId_slug: { tenantId, slug } },
     });
@@ -338,11 +334,7 @@ export class KnowledgeBaseService implements OnModuleInit {
   // Private helpers
   // -------------------------------------------------------------------------
 
-  private async setStatus(
-    tenantId: string,
-    id: string,
-    status: ArticleStatus,
-  ) {
+  private async setStatus(tenantId: string, id: string, status: ArticleStatus) {
     const existing = await this.prisma.article.findUnique({ where: { id } });
 
     if (!existing || existing.tenantId !== tenantId) {

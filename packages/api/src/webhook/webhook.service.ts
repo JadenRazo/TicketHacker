@@ -40,7 +40,11 @@ export class WebhookService {
     });
   }
 
-  async updateEndpoint(tenantId: string, id: string, dto: UpdateWebhookEndpointDto) {
+  async updateEndpoint(
+    tenantId: string,
+    id: string,
+    dto: UpdateWebhookEndpointDto,
+  ) {
     await this.findEndpointOrFail(tenantId, id);
 
     return this.prisma.webhookEndpoint.update({
@@ -176,7 +180,9 @@ export class WebhookService {
 
     // Prune deliveries beyond the retention cap (keep latest MAX_DELIVERIES_PER_ENDPOINT)
     this.pruneDeliveries(data.endpointId).catch((err) =>
-      this.logger.warn(`Failed to prune deliveries for endpoint ${data.endpointId}: ${err.message}`),
+      this.logger.warn(
+        `Failed to prune deliveries for endpoint ${data.endpointId}: ${err.message}`,
+      ),
     );
 
     return delivery;

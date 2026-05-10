@@ -73,7 +73,9 @@ export class NotificationService {
       findManyArgs.skip = 1;
     }
 
-    const notifications: NotificationRecord[] = await (this.prisma as any).notification.findMany(findManyArgs);
+    const notifications: NotificationRecord[] = await (
+      this.prisma as any
+    ).notification.findMany(findManyArgs);
 
     let nextCursor: string | undefined;
     if (notifications.length > take) {

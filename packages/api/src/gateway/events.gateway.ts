@@ -25,7 +25,7 @@ interface SocketData {
 
 type SocketWithData = Socket & {
   data: SocketData;
-}
+};
 
 interface JwtPayload {
   sub: string;
@@ -150,9 +150,7 @@ export class EventsGateway
 
     await this.removeAgentPresence(tenantId, userId);
 
-    this.server
-      .to(`tenant:${tenantId}`)
-      .emit('agent:offline', { userId });
+    this.server.to(`tenant:${tenantId}`).emit('agent:offline', { userId });
 
     this.logger.log(`Client ${client.id} disconnected - User: ${userId}`);
   }
@@ -241,9 +239,14 @@ export class EventsGateway
 
     this.server.to(`tenant:${tenantId}`).emit('ticket:created', ticket);
 
-    await this.redisClient.publish('tickethacker:events', JSON.stringify({
-      event: 'ticket.created', tenant_id: tenantId, ticket,
-    }));
+    await this.redisClient.publish(
+      'tickethacker:events',
+      JSON.stringify({
+        event: 'ticket.created',
+        tenant_id: tenantId,
+        ticket,
+      }),
+    );
 
     this.logger.debug(
       `Broadcast ticket:created to tenant ${tenantId} - ticket ${ticket.id}`,
@@ -257,9 +260,14 @@ export class EventsGateway
     this.server.to(`tenant:${tenantId}`).emit('ticket:updated', ticket);
     this.server.to(`ticket:${ticket.id}`).emit('ticket:updated', ticket);
 
-    await this.redisClient.publish('tickethacker:events', JSON.stringify({
-      event: 'ticket.updated', tenant_id: tenantId, ticket,
-    }));
+    await this.redisClient.publish(
+      'tickethacker:events',
+      JSON.stringify({
+        event: 'ticket.updated',
+        tenant_id: tenantId,
+        ticket,
+      }),
+    );
 
     this.logger.debug(
       `Broadcast ticket:updated to tenant ${tenantId} and ticket room ${ticket.id}`,
@@ -279,9 +287,15 @@ export class EventsGateway
       targetId,
     });
 
-    await this.redisClient.publish('tickethacker:events', JSON.stringify({
-      event: 'ticket.merged', tenant_id: tenantId, source_id: sourceId, target_id: targetId,
-    }));
+    await this.redisClient.publish(
+      'tickethacker:events',
+      JSON.stringify({
+        event: 'ticket.merged',
+        tenant_id: tenantId,
+        source_id: sourceId,
+        target_id: targetId,
+      }),
+    );
 
     this.logger.debug(
       `Broadcast ticket:merged to tenant ${tenantId} - source ${sourceId} to target ${targetId}`,
@@ -298,9 +312,15 @@ export class EventsGateway
 
     this.server.to(`ticket:${ticketId}`).emit('message:created', message);
 
-    await this.redisClient.publish('tickethacker:events', JSON.stringify({
-      event: 'message.created', tenant_id: tenantId, ticket_id: ticketId, message,
-    }));
+    await this.redisClient.publish(
+      'tickethacker:events',
+      JSON.stringify({
+        event: 'message.created',
+        tenant_id: tenantId,
+        ticket_id: ticketId,
+        message,
+      }),
+    );
 
     this.logger.debug(
       `Broadcast message:created to ticket room ${ticketId} - message ${message.id}`,
@@ -344,10 +364,7 @@ export class EventsGateway
     await this.redisClient.del(key);
   }
 
-  private async addToViewers(
-    ticketId: string,
-    userId: string,
-  ): Promise<void> {
+  private async addToViewers(ticketId: string, userId: string): Promise<void> {
     const key = `viewing:${ticketId}`;
     await this.redisClient.sadd(key, userId);
   }

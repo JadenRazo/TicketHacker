@@ -1,4 +1,10 @@
-import { IsString, MaxLength, IsNotEmpty, IsOptional, IsObject } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsNotEmpty,
+  IsOptional,
+  IsObject,
+} from 'class-validator';
 
 export class InboundEmailDto {
   @IsString()

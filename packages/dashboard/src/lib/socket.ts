@@ -124,7 +124,7 @@ export function useTicketRoom(ticketId: string | undefined) {
 }
 
 // Debounced typing indicator
-const typingTimeouts = new Map<string, NodeJS.Timeout>();
+const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function emitTyping(ticketId: string): void {
   if (!socket) return;

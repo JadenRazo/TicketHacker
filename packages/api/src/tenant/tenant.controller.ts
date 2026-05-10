@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Patch,
-  Body,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { TenantService } from './tenant.service';
 import { TenantGuard } from '../common/guards/tenant.guard';

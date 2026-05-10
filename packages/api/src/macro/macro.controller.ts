@@ -42,10 +42,7 @@ export class MacroController {
   }
 
   @Get(':id')
-  findOne(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.macroService.findOne(tenantId, id);
   }
 
@@ -59,10 +56,7 @@ export class MacroController {
   }
 
   @Delete(':id')
-  remove(
-    @CurrentUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.macroService.remove(tenantId, id);
   }
 

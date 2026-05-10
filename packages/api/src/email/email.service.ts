@@ -184,7 +184,10 @@ export class EmailService {
 
       this.logger.log(`Sent outbound email for ticket ${ticketId}`);
     } catch (error) {
-      this.logger.error(`Failed to send outbound email for ticket ${ticketId}`, error);
+      this.logger.error(
+        `Failed to send outbound email for ticket ${ticketId}`,
+        error,
+      );
       throw error;
     }
   }
