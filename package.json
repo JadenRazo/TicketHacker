@@ -14,10 +14,10 @@
     "widget": "pnpm --filter @tickethacker/widget run dev"
   },
   "devDependencies": {
-    "prisma": "6.19.2"
+    "prisma": "6.19.3"
   },
   "dependencies": {
-    "@prisma/client": "6.19.2",
+    "@prisma/client": "6.19.3",
     "@types/node": "^22.19.11",
     "argon2": "^0.44.0",
     "ts-node": "^10.9.2",
