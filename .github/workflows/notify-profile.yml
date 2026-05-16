@@ -1,17 +1,36 @@
 name: Notify Profile Repo
 
+# Best-effort: pings JadenRazo/JadenRazo to refresh the LOC counter after a
+# push to main. This is cosmetic — it must NEVER fail the run or send a
+# failure email. Skips silently when the dispatch token is absent and treats
+# any non-2xx as a logged warning, not a job failure.
+
 on:
   push:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger LOC update
+      - name: Trigger LOC update (non-fatal)
+        env:
+          TOKEN: ${{ secrets.PROFILE_DISPATCH_TOKEN }}
         run: |
-          curl -sf -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token ${{ secrets.PROFILE_DISPATCH_TOKEN }}" \
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::notice::PROFILE_DISPATCH_TOKEN not set — skipping LOC ping."
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
             https://api.github.com/repos/JadenRazo/JadenRazo/dispatches \
-            -d '{"event_type":"loc-update"}'
+            -d '{"event_type":"loc-update"}' || echo 000)
+          if [ "$code" = "204" ]; then
+            echo "LOC update dispatched (HTTP 204)."
+          else
+            echo "::warning::LOC dispatch returned HTTP ${code} — ignored (cosmetic). Check PROFILE_DISPATCH_TOKEN scope/expiry if you want the counter live."
+          fi
