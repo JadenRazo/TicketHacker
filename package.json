@@ -18,10 +18,10 @@
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
-    "@types/node": "^22.19.11",
+    "@types/node": "^22.19.19",
     "argon2": "^0.44.0",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
+    "tsx": "^4.22.0",
     "typescript": "^5.9.3"
   }
 }
