@@ -49,7 +49,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
     "nestjs-pino": "^4.6.1",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^9.0.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pino": "^10.3.1",
