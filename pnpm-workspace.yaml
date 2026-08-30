@@ -33,3 +33,5 @@ overrides:
   ws@8: ^8.21.0
   engine.io@6: ^6.6.7
   socket.io-parser@4: ^4.2.6
+  deepmerge-ts@7: ^8.0.0
+  nanoid@3: ^3.3.18
