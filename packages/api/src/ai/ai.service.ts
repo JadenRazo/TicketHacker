@@ -8,7 +8,7 @@ interface ChatMessage {
   content: string;
 }
 
-interface ClassificationResult {
+export interface ClassificationResult {
   category: string;
   suggestedPriority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
   sentiment: 'positive' | 'neutral' | 'negative';
