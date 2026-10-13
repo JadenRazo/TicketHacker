@@ -95,6 +95,8 @@ model Tenant {
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
 
+  agentOperations          AgentOperation[]
+
   // Relations
   users                    User[]
   teams                    Team[]
@@ -176,6 +178,8 @@ model TeamMember {
 }
 
 model Ticket {
+  agentVersion      Int             @default(0)
+  agentOperations   AgentOperation[]
   id                String          @id @default(uuid())
   tenantId          String
   subject           String
@@ -467,4 +471,28 @@ model WebhookDelivery {
 
   @@index([endpointId, deliveredAt])
   @@index([tenantId])
+}
+
+// Durable identity and terminal receipts. Never prune while input events can replay.
+model AgentOperation {
+  id                String   @id
+  tenantId          String
+  ticketId          String
+  originMessageId   String?
+  kind              String
+  source            String
+  ticketVersion     Int
+  completedTicketVersion Int?
+  predecessorId     String?
+  settingsVersion   String
+  status            String   @default("PENDING")
+  callbackEventId   String?
+  claimToken        String?
+  result            Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  tenant            Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket            Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, ticketId])
 }

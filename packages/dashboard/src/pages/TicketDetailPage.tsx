@@ -26,6 +26,7 @@ import {
   type Ticket,
   type AgentResult,
 } from '../lib/api';
+import { describeAgentResult } from '../lib/agent-result-notice';
 import { useTicketRoom, emitTyping } from '../lib/socket';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useAuthStore } from '../store/auth';
@@ -268,7 +269,8 @@ export default function TicketDetailPage() {
       setAiResult(data.result);
       setShowAiPanel(true);
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
-      showToast('AI triage completed', 'success');
+      const notice = describeAgentResult(data.result);
+      showToast(notice.message, notice.type);
     },
     onError: (error: Error) => {
       showToast(error.message || 'AI triage failed', 'error');
@@ -280,10 +282,11 @@ export default function TicketDetailPage() {
     onSuccess: (data) => {
       setAiResult(data.result);
       setShowAiPanel(true);
-      if (data.result.draftReply && editor) {
+      if (data.result.action === 'drafted' && data.result.draftReply && editor) {
         editor.commands.setContent(data.result.draftReply);
       }
-      showToast('AI draft reply generated', 'success');
+      const notice = describeAgentResult(data.result);
+      showToast(notice.message, notice.type);
     },
     onError: (error: Error) => {
       showToast(error.message || 'AI draft reply failed', 'error');
@@ -297,7 +300,8 @@ export default function TicketDetailPage() {
       setShowAiPanel(true);
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
       queryClient.invalidateQueries({ queryKey: ['messages', id] });
-      showToast(`AI resolve: ${data.result.action}`, 'success');
+      const notice = describeAgentResult(data.result);
+      showToast(notice.message, notice.type);
     },
     onError: (error: Error) => {
       showToast(error.message || 'AI resolve failed', 'error');
@@ -309,7 +313,8 @@ export default function TicketDetailPage() {
     onSuccess: (data) => {
       setAiResult(data.result);
       setShowAiPanel(true);
-      showToast('AI summary generated', 'success');
+      const notice = describeAgentResult(data.result);
+      showToast(notice.message, notice.type);
     },
     onError: (error: Error) => {
       showToast(error.message || 'AI summarize failed', 'error');
@@ -1267,7 +1272,7 @@ export default function TicketDetailPage() {
                 result={aiResult}
                 ticketId={id!}
                 onUseReply={(draft) => {
-                  if (editor) {
+                  if (aiResult.action === 'drafted' && editor) {
                     editor.commands.setContent(draft);
                     editor.commands.focus();
                   }

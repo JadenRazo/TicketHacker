@@ -2,7 +2,6 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
-import { OpenclawService } from '../openclaw/openclaw.service';
 
 @Injectable()
 export class WidgetService {
@@ -12,7 +11,6 @@ export class WidgetService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private eventEmitter: EventEmitter2,
-    private openclawService: OpenclawService,
   ) {}
 
   async init(tenantId: string) {
@@ -133,7 +131,7 @@ export class WidgetService {
       },
     });
 
-    return messages.filter((m) => m.messageType !== 'NOTE');
+    return messages.filter((m) => m.messageType === 'TEXT');
   }
 
   async sendMessage(
@@ -171,63 +169,7 @@ export class WidgetService {
       message,
     });
 
-    await this.tryWidgetAiResponse(tenantId, conversationId, content);
-
     return message;
-  }
-
-  private async tryWidgetAiResponse(
-    tenantId: string,
-    ticketId: string,
-    customerMessage: string,
-  ): Promise<void> {
-    try {
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: { settings: true },
-      });
-
-      const settings = (tenant?.settings as any) || {};
-      if (!settings.openclawEnabled || !settings.openclawWidgetAgent) return;
-      if (!this.openclawService.isEnabled()) return;
-
-      const threshold = settings.openclawConfidenceThreshold || 0.8;
-
-      const result = await this.openclawService.handleWidgetMessage(
-        ticketId,
-        tenantId,
-        customerMessage,
-        { model: settings.openclawModel, confidenceThreshold: threshold },
-      );
-
-      if (result.action === 'replied' && result.confidence >= threshold) {
-        await this.prisma.ticket.update({
-          where: { id: ticketId },
-          data: {
-            metadata: {
-              isAiHandled: true,
-              lastAiAction: result.action,
-              aiConfidence: result.confidence,
-            },
-          },
-        });
-      } else if (result.action === 'needs_human') {
-        await this.prisma.ticket.update({
-          where: { id: ticketId },
-          data: {
-            metadata: {
-              isAiHandled: false,
-              aiEscalatedAt: new Date().toISOString(),
-            },
-          },
-        });
-      }
-    } catch (error) {
-      this.logger.error(
-        `Widget AI response failed for ticket ${ticketId}`,
-        error,
-      );
-    }
   }
 
   async submitRating(

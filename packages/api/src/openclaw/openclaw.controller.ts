@@ -18,7 +18,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { OpenclawService } from './openclaw.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AgentActionDto, WebhookInboundDto } from './dto/agent-action.dto';
+import { AgentActionDto, WebhookInboundDto, PrepareAgentOperationDto } from './dto/agent-action.dto';
 
 @Controller('openclaw')
 export class OpenclawController {
@@ -67,9 +67,11 @@ export class OpenclawController {
 
     const result = await this.openclawService.triageTicket(ticketId, tenantId, {
       model: dto.model,
+      requestId: dto.operationId,
     });
 
     await this.openclawService.appendAiActivity(ticketId, tenantId, {
+      operationId: result.operationId,
       action: 'triage',
       result: {
         action: result.action,
@@ -97,10 +99,11 @@ export class OpenclawController {
     const result = await this.openclawService.generateDraftReply(
       ticketId,
       tenantId,
-      { model: dto.model },
+      { model: dto.model, requestId: dto.operationId },
     );
 
     await this.openclawService.appendAiActivity(ticketId, tenantId, {
+      operationId: result.operationId,
       action: 'draft-reply',
       result: {
         action: result.action,
@@ -128,10 +131,11 @@ export class OpenclawController {
     const result = await this.openclawService.attemptResolve(
       ticketId,
       tenantId,
-      { model: dto.model },
+      { model: dto.model, requestId: dto.operationId },
     );
 
     await this.openclawService.appendAiActivity(ticketId, tenantId, {
+      operationId: result.operationId,
       action: 'resolve',
       result: {
         action: result.action,
@@ -159,10 +163,11 @@ export class OpenclawController {
     const result = await this.openclawService.summarizeTicket(
       ticketId,
       tenantId,
-      { model: dto.model },
+      { model: dto.model, requestId: dto.operationId },
     );
 
     await this.openclawService.appendAiActivity(ticketId, tenantId, {
+      operationId: result.operationId,
       action: 'summarize',
       result: {
         action: result.action,
@@ -194,14 +199,25 @@ export class OpenclawController {
       `Received OpenClaw webhook: ${dto.event} for ticket ${dto.ticketId}`,
     );
 
-    await this.openclawService.processWebhookEvent(
+    const result = await this.openclawService.processWebhookEvent(
       dto.event,
       dto.ticketId,
       dto.tenantId,
       dto.payload,
+      dto,
     );
 
-    return { received: true, event: dto.event };
+    return { received: true, event: dto.event, result };
+  }
+
+  @Post('agent/operations/:ticketId')
+  @UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard)
+  @Roles('AGENT')
+  async prepareOperation(@Param('ticketId') ticketId: string,
+    @Body() dto: PrepareAgentOperationDto, @Request() req: any) {
+    await this.validateTicketAccess(ticketId, req.tenantId);
+    const operation = await this.openclawService.prepareCallbackOperation(ticketId, req.tenantId, dto.kind, dto.operationId);
+    return { operationId: operation.id, originMessageId: operation.originMessageId, kind: operation.kind };
   }
 
   @Post('agent/feedback/:ticketId')

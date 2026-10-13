@@ -78,7 +78,10 @@ export interface AutomationAction {
 }
 
 export interface OpenClawAgentResult {
-  action: 'replied' | 'triaged' | 'escalated' | 'resolved' | 'needs_human';
+  action: 'drafted' | 'summarized' | 'triaged' | 'escalated' | 'needs_human' | 'superseded' | 'uncertain';
+  operationId?: string;
+  delivery?: 'not_sent';
+  notification?: 'best_effort';
   confidence: number;
   summary: string;
   toolCalls: Array<{ tool: string; args: any; result: any }>;

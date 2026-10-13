@@ -15,6 +15,7 @@ coverage/
 *.key
 *.pfx
 .claude*
-prisma/migrations/
+prisma/migrations/*
+!prisma/migrations/20261013000000_agent_integrity/
 services/realtime/realtime
 uploads/

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Bot, webhookCallback } from 'grammy';
 import { PrismaService } from '../prisma/prisma.service';
+import { captureOutboundMessages, recordOutboundDelivery } from '../message-bus/outbound-bookkeeping';
 import {
   Channel,
   MessageDirection,
@@ -218,23 +219,23 @@ export class TelegramService {
       }
 
       const chatId = ticket.contact.externalId;
+      const messageIds = await captureOutboundMessages(this.prisma, ticket.tenantId, ticketId, content);
       const sentMessage = await bot.api.sendMessage(chatId, content);
 
-      await this.prisma.message.updateMany({
-        where: {
-          ticketId,
-          contentText: content,
-          direction: MessageDirection.OUTBOUND,
-          externalId: null,
-        },
-        data: {
-          externalId: sentMessage.message_id.toString(),
-        },
-      });
+      let bookkeeping: 'recorded' | 'needs_reconciliation' = 'recorded';
+      try {
+        await recordOutboundDelivery(this.prisma, ticket.tenantId, messageIds, sentMessage.message_id.toString());
+      } catch (error) {
+        bookkeeping = 'needs_reconciliation';
+        // The channel acknowledged this send. Throwing here would replay it
+        // through the outbound queue; retain the acknowledgement for review.
+        this.logger.error(`Outbound acknowledgement ${sentMessage.message_id.toString()} for ticket ${ticketId} needs reconciliation`, error);
+      }
 
       return {
         success: true,
         messageId: sentMessage.message_id.toString(),
+        bookkeeping,
       };
     } catch (error) {
       this.logger.error('Error sending outbound Telegram message:', error);
