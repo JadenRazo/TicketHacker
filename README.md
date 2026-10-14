@@ -210,6 +210,9 @@ pnpm seed          # Re-seed sample data
 
 ## Production Notes
 
+Existing installations need the [persistent migration and producer preflight](docs/deployment-preflight.md)
+before adopting agent integrity. The development quickstart is not an upgrade procedure.
+
 - Replace all placeholder JWT secrets with cryptographically random strings
 - Swap Mailhog for a real SMTP provider (SendGrid, SES, etc.)
 - Configure a proper CORS allowlist in the API
