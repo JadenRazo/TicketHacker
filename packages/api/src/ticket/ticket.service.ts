@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
@@ -261,23 +261,25 @@ export class TicketService {
   }
 
   async merge(tenantId: string, sourceId: string, targetId: string) {
-    const [sourceTicket, targetTicket] = await Promise.all([
-      this.prisma.ticket.findUnique({ where: { id: sourceId } }),
-      this.prisma.ticket.findUnique({ where: { id: targetId } }),
-    ]);
-
-    if (
-      !sourceTicket ||
-      sourceTicket.tenantId !== tenantId ||
-      !targetTicket ||
-      targetTicket.tenantId !== tenantId
-    ) {
-      throw new NotFoundException('Ticket not found');
-    }
-
+    if (sourceId === targetId) throw new BadRequestException('Cannot merge a ticket into itself');
     await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT set_config('app.current_tenant', ${tenantId}, true)`;
+      // Lock both parents in database order before acquiring message locks.
+      // The message-version trigger uses the same parent order on a move.
+      await tx.$queryRaw`SELECT id FROM public."Ticket"
+        WHERE "tenantId" = ${tenantId} AND id IN (${sourceId}, ${targetId}) ORDER BY id FOR UPDATE`;
+      const [sourceTicket, targetTicket] = await Promise.all([
+        tx.ticket.findUnique({ where: { id: sourceId } }),
+        tx.ticket.findUnique({ where: { id: targetId } }),
+      ]);
+      if (!sourceTicket || sourceTicket.tenantId !== tenantId ||
+        !targetTicket || targetTicket.tenantId !== tenantId) throw new NotFoundException('Ticket not found');
+      // Recheck under the locks: an opposing merge may just have completed.
+      if (sourceTicket.mergedIntoId || targetTicket.mergedIntoId) {
+        throw new BadRequestException('A selected ticket has already been merged');
+      }
       await tx.message.updateMany({
-        where: { ticketId: sourceId },
+        where: { ticketId: sourceId, tenantId },
         data: { ticketId: targetId },
       });
 

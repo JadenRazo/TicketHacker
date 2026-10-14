@@ -10,14 +10,15 @@ describe('TicketService', () => {
   let prisma: Record<string, any>;
   let eventEmitter: EventEmitter2;
 
+  const mockTicket = {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
+  };
   const mockPrisma = {
-    ticket: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      updateMany: jest.fn(),
-    },
+    ticket: mockTicket,
     contact: {
       findUnique: jest.fn(),
     },
@@ -30,7 +31,8 @@ describe('TicketService', () => {
     $transaction: jest.fn((fn) =>
       fn({
         message: { updateMany: jest.fn() },
-        ticket: { update: jest.fn() },
+        ticket: mockTicket,
+        $queryRaw: jest.fn().mockResolvedValue([]),
       }),
     ),
   };

@@ -6,6 +6,7 @@ import { OpenclawService } from './openclaw.service';
 import { OpenclawController } from './openclaw.controller';
 import { OpenclawAgentProcessor } from './openclaw-agent.processor';
 import { OpenclawListener } from './openclaw.listener';
+import { AgentOperations } from './agent-operations';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { OpenclawListener } from './openclaw.listener';
     BullModule.registerQueue({ name: 'openclaw-agent' }),
   ],
   controllers: [OpenclawController],
-  providers: [OpenclawService, OpenclawAgentProcessor, OpenclawListener],
+  providers: [OpenclawService, OpenclawAgentProcessor, OpenclawListener, AgentOperations],
   exports: [OpenclawService],
 })
 export class OpenclawModule {}

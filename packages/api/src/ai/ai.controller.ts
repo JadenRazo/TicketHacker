@@ -14,6 +14,8 @@ import { AiService } from './ai.service';
 import { AiInteractionService } from './ai-interaction.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessageDirection } from '@prisma/client';
+import { loadThreadContext } from './thread-context';
+import { applyClassificationIfCurrent } from './state-guard';
 
 @Controller('ai')
 @UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard)
@@ -33,9 +35,10 @@ export class AiController {
     const tenantId = req.tenantId;
     const startTime = Date.now();
 
-    const ticket = await this.prisma.ticket.findUnique({
-      where: { id: ticketId },
+    const ticket = await this.prisma.ticket.findFirst({
+      where: { id: ticketId, tenantId },
       include: {
+        tenant: { select: { settings: true } },
         messages: {
           where: { direction: MessageDirection.INBOUND },
           orderBy: { createdAt: 'asc' },
@@ -53,23 +56,15 @@ export class AiController {
     const classification = await this.aiService.classifyTicket({
       subject: ticket.subject,
       firstMessage,
+      context: await loadThreadContext(this.prisma, tenantId, ticketId),
     });
 
     const latencyMs = Date.now() - startTime;
 
+    let applied = false;
     if (classification) {
-      await this.prisma.ticket.update({
-        where: { id: ticketId },
-        data: {
-          metadata: {
-            ...(ticket.metadata as Record<string, unknown>),
-            aiClassification: classification as unknown as Record<
-              string,
-              unknown
-            >,
-          } as any,
-        },
-      });
+      applied = await applyClassificationIfCurrent(this.prisma, tenantId, ticketId,
+        ticket.agentVersion, ticket.tenant.settings, classification);
 
       await this.aiInteractionService.logInteraction({
         tenantId,
@@ -77,11 +72,11 @@ export class AiController {
         action: 'classify',
         model: 'gpt-3.5-turbo',
         latencyMs,
-        accepted: true,
+        accepted: applied,
       });
     }
 
-    return { classification };
+    return { classification, applied };
   }
 
   @Post('suggest/:ticketId')
@@ -92,16 +87,9 @@ export class AiController {
     const tenantId = req.tenantId;
     const startTime = Date.now();
 
-    const ticket = await this.prisma.ticket.findUnique({
-      where: { id: ticketId },
+    const ticket = await this.prisma.ticket.findFirst({
+      where: { id: ticketId, tenantId },
       include: {
-        messages: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            sender: { select: { name: true } },
-            contact: { select: { name: true } },
-          },
-        },
         tenant: { select: { settings: true } },
       },
     });
@@ -110,10 +98,7 @@ export class AiController {
       throw new NotFoundException('Ticket not found');
     }
 
-    const messages = ticket.messages.map((msg) => ({
-      role: msg.direction === MessageDirection.INBOUND ? 'customer' : 'agent',
-      content: msg.contentText,
-    }));
+    const messages = await loadThreadContext(this.prisma, tenantId, ticketId);
 
     const tenantSettings = ticket.tenant.settings as any;
     const brandVoice = tenantSettings?.brandVoice;
@@ -144,23 +129,15 @@ export class AiController {
     const tenantId = req.tenantId;
     const startTime = Date.now();
 
-    const ticket = await this.prisma.ticket.findUnique({
-      where: { id: ticketId },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'asc' },
-        },
-      },
+    const ticket = await this.prisma.ticket.findFirst({
+      where: { id: ticketId, tenantId },
     });
 
     if (!ticket || ticket.tenantId !== tenantId) {
       throw new NotFoundException('Ticket not found');
     }
 
-    const messages = ticket.messages.map((msg) => ({
-      role: msg.direction === MessageDirection.INBOUND ? 'customer' : 'agent',
-      content: msg.contentText,
-    }));
+    const messages = await loadThreadContext(this.prisma, tenantId, ticketId);
 
     const summary = await this.aiService.summarizeThread(messages);
 

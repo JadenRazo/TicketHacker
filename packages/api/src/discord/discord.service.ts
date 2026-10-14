@@ -15,6 +15,7 @@ import {
   ThreadAutoArchiveDuration,
 } from 'discord.js';
 import { PrismaService } from '../prisma/prisma.service';
+import { captureOutboundMessages, recordOutboundDelivery } from '../message-bus/outbound-bookkeeping';
 import { Channel, MessageDirection, MessageType } from '@prisma/client';
 
 @Injectable()
@@ -336,21 +337,20 @@ export class DiscordService implements OnModuleInit {
         throw new Error('Thread not found');
       }
 
+      const messageIds = await captureOutboundMessages(this.prisma, ticket.tenantId, ticketId, content);
       const sentMessage = await thread.send(content);
 
-      await this.prisma.message.updateMany({
-        where: {
-          ticketId,
-          contentText: content,
-          direction: MessageDirection.OUTBOUND,
-          externalId: null,
-        },
-        data: {
-          externalId: sentMessage.id,
-        },
-      });
+      let bookkeeping: 'recorded' | 'needs_reconciliation' = 'recorded';
+      try {
+        await recordOutboundDelivery(this.prisma, ticket.tenantId, messageIds, sentMessage.id);
+      } catch (error) {
+        bookkeeping = 'needs_reconciliation';
+        // The channel acknowledged this send. Throwing here would replay it
+        // through the outbound queue; retain the acknowledgement for review.
+        this.logger.error(`Outbound acknowledgement ${sentMessage.id} for ticket ${ticketId} needs reconciliation`, error);
+      }
 
-      return { success: true, messageId: sentMessage.id };
+      return { success: true, messageId: sentMessage.id, bookkeeping };
     } catch (error) {
       this.logger.error('Error sending outbound message:', error);
       throw error;

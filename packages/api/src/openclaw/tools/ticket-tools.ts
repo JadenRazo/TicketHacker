@@ -1,5 +1,10 @@
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { Prisma } from '@prisma/client';
+import { ALLOWED_TOOLS, MUTATION_TOOLS, argumentError } from '../action-policy';
+import type { OperationScope } from '../action-policy';
+import { loadThreadContext } from '../../ai/thread-context';
+
+type Database = Prisma.TransactionClient;
+interface EffectSink { emit(event: string, payload: any): unknown }
 
 export const TICKET_TOOLS = [
   {
@@ -28,7 +33,7 @@ export const TICKET_TOOLS = [
           ticketId: { type: 'string' },
           status: {
             type: 'string',
-            enum: ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'],
+            enum: ['OPEN', 'PENDING'],
           },
           priority: {
             type: 'string',
@@ -44,7 +49,7 @@ export const TICKET_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'send_reply',
-      description: 'Send a reply message to the customer on a ticket',
+      description: 'Prepare an UNSENT reply suggestion for human review. This does not deliver a message.',
       parameters: {
         type: 'object',
         properties: {
@@ -223,43 +228,82 @@ export const TICKET_TOOLS = [
       },
     },
   },
-];
+].map(tool => ({ ...tool, function: { ...tool.function,
+  parameters: { ...tool.function.parameters, additionalProperties: false } } }));
 
 export type ToolCallArgs = Record<string, any>;
 
+function failure(error: string) { return JSON.stringify({ error }); }
+
+async function validateCall(toolName: string, args: ToolCallArgs, scope: OperationScope, prisma: Database) {
+  if (!scope || !ALLOWED_TOOLS[scope.kind]?.includes(toolName)) return 'Tool is not permitted for this operation';
+  const tool = TICKET_TOOLS.find(t => t.function.name === toolName);
+  if (!tool) return 'Unknown tool';
+  const invalid = argumentError(tool, args);
+  if (invalid) return invalid;
+  if (args.ticketId && args.ticketId !== scope.ticketId) return 'Ticket is outside the authorized target';
+  const ticket = await prisma.ticket.findFirst({ where: { id: scope.ticketId, tenantId: scope.tenantId } });
+  if (!ticket) return 'Ticket not found';
+  if (args.contactId && args.contactId !== ticket.contactId) return 'Contact is outside the authorized target';
+  if (args.assigneeId && !await prisma.user.findFirst({
+    where: { id: args.assigneeId, tenantId: scope.tenantId, isActive: true, role: { in: ['OWNER', 'ADMIN', 'AGENT'] } },
+  })) return 'Assignee is not an active agent in this tenant';
+  if (args.teamId && !await prisma.team.findFirst({ where: { id: args.teamId, tenantId: scope.tenantId } })) return 'Team not found in this tenant';
+  // The existing reply path stores suggestions, not confirmed delivery. Never
+  // resolve a ticket on the strength of an unsent solution.
+  if (['RESOLVED', 'CLOSED'].includes(args.status) && toolName === 'update_ticket') return 'Terminal status requires human confirmation; agent replies are unsent drafts';
+  return null;
+}
+
 export async function executeToolCall(
-  toolName: string,
-  args: ToolCallArgs,
-  tenantId: string,
-  prisma: PrismaService,
-  eventEmitter: EventEmitter2,
+  toolName: string, args: ToolCallArgs, scope: OperationScope,
+  prisma: Database, callId: string,
 ): Promise<string> {
+  const invalid = await validateCall(toolName, args, scope, prisma);
+  if (invalid) return failure(invalid);
+  if (MUTATION_TOOLS.includes(toolName)) {
+    if (!callId || scope.pending.length >= 40) return failure('Invalid or excessive tool calls');
+    const prior = scope.pending.find(t => t.callId === callId);
+    if (prior && (prior.name !== toolName || JSON.stringify(prior.args) !== JSON.stringify(args))) return failure('Tool call identity reused with different arguments');
+    if (!prior) scope.pending.push({ name: toolName, args, callId });
+    return JSON.stringify({ staged: true, applied: false, delivery: 'not_sent' });
+  }
+  return runTool(toolName, args, scope.tenantId, prisma, { emit() {} });
+}
+
+export async function applyPendingTools(scope: OperationScope, prisma: Database, effects: EffectSink) {
+  const results: Array<{ tool: string; args: ToolCallArgs; result: string }> = [];
+  for (const tool of scope.pending) {
+    // Prevent an assignee from being disabled/moved or a team moved/deleted
+    // between the final ownership check and its assignment write.
+    if (tool.args.assigneeId) await prisma.$queryRaw`SELECT id FROM "User" WHERE id = ${tool.args.assigneeId} AND "tenantId" = ${scope.tenantId} FOR SHARE`;
+    if (tool.args.teamId) await prisma.$queryRaw`SELECT id FROM "Team" WHERE id = ${tool.args.teamId} AND "tenantId" = ${scope.tenantId} FOR SHARE`;
+    const invalid = await validateCall(tool.name, tool.args, scope, prisma);
+    if (invalid) throw new Error(invalid); // roll back the whole operation
+    const result = await runTool(tool.name, tool.args, scope.tenantId, prisma, effects);
+    if (JSON.parse(result).error) throw new Error('Tool application failed');
+    results.push({ tool: tool.name, args: tool.args, result });
+  }
+  return results;
+}
+
+async function runTool(toolName: string, args: ToolCallArgs, tenantId: string, prisma: Database, eventEmitter: EffectSink): Promise<string> {
   switch (toolName) {
     case 'get_ticket': {
       const ticket = await prisma.ticket.findFirst({
         where: { id: args.ticketId, tenantId },
         include: {
-          messages: {
-            orderBy: { createdAt: 'asc' },
-            take: 20,
-            select: {
-              id: true,
-              direction: true,
-              contentText: true,
-              messageType: true,
-              createdAt: true,
-            },
-          },
           contact: {
             select: {
               id: true,
+              tenantId: true,
               name: true,
               email: true,
               metadata: true,
             },
           },
-          assignee: { select: { id: true, name: true } },
-          team: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true, tenantId: true } },
+          team: { select: { id: true, name: true, tenantId: true } },
         },
       });
 
@@ -272,11 +316,11 @@ export async function executeToolCall(
         priority: ticket.priority,
         channel: ticket.channel,
         tags: ticket.tags,
-        contact: ticket.contact,
-        assignee: ticket.assignee,
-        team: ticket.team,
+        contact: ticket.contact?.tenantId === tenantId ? ticket.contact : null,
+        assignee: ticket.assignee?.tenantId === tenantId ? ticket.assignee : null,
+        team: ticket.team?.tenantId === tenantId ? ticket.team : null,
         createdAt: ticket.createdAt,
-        messages: ticket.messages,
+        context: await loadThreadContext(prisma, tenantId, ticket.id),
         metadata: ticket.metadata,
       });
     }
@@ -291,7 +335,7 @@ export async function executeToolCall(
       if (args.status === 'CLOSED') updateData.closedAt = new Date();
 
       const updated = await prisma.ticket.update({
-        where: { id: args.ticketId },
+        where: { id: args.ticketId, tenantId },
         data: updateData,
       });
 
@@ -316,17 +360,14 @@ export async function executeToolCall(
           direction: 'OUTBOUND',
           contentText: args.content,
           messageType: 'AI_SUGGESTION',
+          metadata: { aiGenerated: true, deliveryStatus: 'not_sent' },
         },
-      });
-
-      eventEmitter.emit('message.created', {
-        tenantId,
-        ticketId: args.ticketId,
-        message,
       });
 
       return JSON.stringify({
         success: true,
+        delivery: 'not_sent',
+        draft: true,
         messageId: message.id,
       });
     }
@@ -340,12 +381,6 @@ export async function executeToolCall(
           contentText: args.content,
           messageType: 'NOTE',
         },
-      });
-
-      eventEmitter.emit('message.created', {
-        tenantId,
-        ticketId: args.ticketId,
-        message: note,
       });
 
       return JSON.stringify({
@@ -363,6 +398,7 @@ export async function executeToolCall(
           {
             messages: {
               some: {
+                tenantId,
                 contentText: { contains: args.query, mode: 'insensitive' },
               },
             },
@@ -384,11 +420,12 @@ export async function executeToolCall(
           tags: true,
           messages: {
             where: {
+              tenantId,
               contentText: { contains: args.query, mode: 'insensitive' },
             },
             take: 1,
             orderBy: { createdAt: 'asc' },
-            select: { contentText: true },
+            select: { id: true, direction: true, messageType: true, contentText: true },
           },
         },
       });
@@ -401,6 +438,9 @@ export async function executeToolCall(
           priority: t.priority,
           createdAt: t.createdAt,
           tags: t.tags,
+          matchingMessageId: t.messages[0]?.id,
+          matchingMessageType: t.messages[0]?.messageType,
+          matchingDirection: t.messages[0]?.direction,
           matchingSnippet:
             t.messages.length > 0
               ? t.messages[0].contentText.slice(0, 200)
@@ -414,6 +454,7 @@ export async function executeToolCall(
         where: { id: args.contactId, tenantId },
         include: {
           tickets: {
+            where: { tenantId },
             orderBy: { createdAt: 'desc' },
             take: 10,
             select: {
@@ -442,11 +483,13 @@ export async function executeToolCall(
     }
 
     case 'escalate': {
+      const previous = await prisma.ticket.findFirst({ where: { id: args.ticketId, tenantId } });
       const ticket = await prisma.ticket.update({
-        where: { id: args.ticketId },
+        where: { id: args.ticketId, tenantId },
         data: {
           status: 'OPEN',
           metadata: {
+            ...((previous?.metadata as Record<string, any>) ?? {}),
             escalation: {
               reason: args.reason,
               escalatedAt: new Date().toISOString(),
@@ -509,7 +552,7 @@ export async function executeToolCall(
           contentText: { contains: args.query, mode: 'insensitive' },
           messageType: 'TEXT',
           direction: 'OUTBOUND',
-          ticket: { status: 'RESOLVED' },
+          ticket: { status: 'RESOLVED', tenantId },
         },
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -529,6 +572,9 @@ export async function executeToolCall(
       return JSON.stringify({
         results: messages.map((m) => ({
           messageId: m.id,
+          messageType: 'TEXT',
+          direction: 'OUTBOUND',
+          delivery: 'unknown',
           ticketId: m.ticket.id,
           ticketSubject: m.ticket.subject,
           snippet: m.contentText.slice(0, 300),
@@ -539,7 +585,7 @@ export async function executeToolCall(
 
     case 'set_tags': {
       const updated = await prisma.ticket.update({
-        where: { id: args.ticketId },
+        where: { id: args.ticketId, tenantId },
         data: { tags: args.tags },
       });
 
@@ -560,7 +606,7 @@ export async function executeToolCall(
       if (!team) return JSON.stringify({ error: 'Team not found' });
 
       const updated = await prisma.ticket.update({
-        where: { id: args.ticketId },
+        where: { id: args.ticketId, tenantId },
         data: { teamId: args.teamId },
       });
 

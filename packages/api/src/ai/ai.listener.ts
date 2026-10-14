@@ -1,3 +1,5 @@
+import { loadThreadContext } from './thread-context';
+import { applyClassificationIfCurrent } from './state-guard';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { AiService } from './ai.service';
@@ -42,6 +44,7 @@ export class AiListener {
       const firstMessage = await this.prisma.message.findFirst({
         where: {
           ticketId: ticket.id,
+          tenantId,
           direction: MessageDirection.INBOUND,
         },
         orderBy: { createdAt: 'asc' },
@@ -52,10 +55,13 @@ export class AiListener {
         return;
       }
 
+      const currentTicket = await this.prisma.ticket.findFirst({ where: { id: ticket.id, tenantId } });
+      if (!currentTicket) return;
       const startTime = Date.now();
       const classification = await this.aiService.classifyTicket({
-        subject: ticket.subject,
+        subject: currentTicket.subject,
         firstMessage: firstMessage.contentText,
+        context: await loadThreadContext(this.prisma, tenantId, ticket.id),
       });
 
       if (!classification) {
@@ -65,24 +71,9 @@ export class AiListener {
 
       const latencyMs = Date.now() - startTime;
 
-      const updateData: any = {
-        metadata: {
-          ...(ticket.metadata as object),
-          aiClassification: classification,
-        },
-      };
-
-      if (classification.autoApply && classification.confidence > 0.85) {
-        updateData.priority = classification.suggestedPriority;
-        this.logger.log(
-          `Auto-applied priority ${classification.suggestedPriority} to ticket ${ticket.id} (confidence: ${classification.confidence})`,
-        );
-      }
-
-      await this.prisma.ticket.update({
-        where: { id: ticket.id },
-        data: updateData,
-      });
+      const applied = await applyClassificationIfCurrent(this.prisma, tenantId, ticket.id,
+        currentTicket.agentVersion, settings, classification,
+        classification.autoApply && classification.confidence > 0.85 ? classification.suggestedPriority : undefined);
 
       await this.aiInteractionService.logInteraction({
         tenantId,
@@ -90,7 +81,7 @@ export class AiListener {
         action: 'auto_classify',
         model: 'gpt-3.5-turbo',
         latencyMs,
-        accepted: classification.autoApply,
+        accepted: applied && classification.autoApply,
       });
     } catch (error) {
       this.logger.error(`Failed to auto-classify ticket ${ticket.id}`, error);

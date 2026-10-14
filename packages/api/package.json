@@ -13,7 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
+    "test": "node test/integration-regressions.offline.cjs && jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -21,7 +21,9 @@
     "seed": "ts-node -r tsconfig-paths/register ../../scripts/seed.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:agent-integrity": "node test/integration-regressions.offline.cjs",
+    "test:agent-integrity:postgres": "node test/channel-bookkeeping.postgres.cjs"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",

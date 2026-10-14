@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CONTEXT_RULES } from './thread-context';
+import type { ThreadContext } from './thread-context';
 
 interface ChatMessage {
   role: string;
   content: string;
 }
 
-interface ClassificationResult {
+export interface ClassificationResult {
   category: string;
   suggestedPriority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
   sentiment: 'positive' | 'neutral' | 'negative';
@@ -53,6 +55,7 @@ export class AiService {
   async classifyTicket(ticket: {
     subject: string;
     firstMessage: string;
+    context?: ThreadContext;
   }): Promise<ClassificationResult | null> {
     if (!this.enabled) return null;
 
@@ -66,16 +69,19 @@ export class AiService {
 
 Return only valid JSON, no other text.`;
 
-      const userPrompt = `Subject: ${ticket.subject}\n\nMessage: ${ticket.firstMessage}`;
+      const userPrompt = `Subject: ${ticket.subject}\n\nThread: ${ticket.context ? JSON.stringify(ticket.context) : ticket.firstMessage}`;
 
       const response = await this.callChatCompletion([
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: `${systemPrompt}\n\n${CONTEXT_RULES}` },
         { role: 'user', content: userPrompt },
       ]);
 
       if (!response) return null;
 
       const classification = JSON.parse(response);
+      if (!classification || !['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(classification.suggestedPriority) ||
+        typeof classification.confidence !== 'number' || !Number.isFinite(classification.confidence) ||
+        classification.confidence < 0 || classification.confidence > 1) return null;
       classification.autoApply = classification.confidence > 0.85;
 
       return classification;
@@ -86,7 +92,7 @@ Return only valid JSON, no other text.`;
   }
 
   async suggestReplies(
-    messages: Array<{ role: string; content: string }>,
+    messages: ThreadContext,
     tenantContext?: string,
   ): Promise<ReplySuggestion[]> {
     if (!this.enabled) return [];
@@ -100,12 +106,10 @@ ${tenantContext ? `Brand voice context: ${tenantContext}` : ''}
 
 Return only valid JSON array, no other text.`;
 
-      const conversationHistory = messages
-        .map((m) => `${m.role}: ${m.content}`)
-        .join('\n\n');
+      const conversationHistory = JSON.stringify(messages);
 
       const response = await this.callChatCompletion([
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: `${systemPrompt}\n\n${CONTEXT_RULES}` },
         { role: 'user', content: conversationHistory },
       ]);
 
@@ -119,7 +123,7 @@ Return only valid JSON array, no other text.`;
   }
 
   async summarizeThread(
-    messages: Array<{ role: string; content: string }>,
+    messages: ThreadContext,
   ): Promise<ThreadSummary | null> {
     if (!this.enabled) return null;
 
@@ -133,12 +137,10 @@ Return only valid JSON array, no other text.`;
 
 Return only valid JSON, no other text.`;
 
-      const conversationHistory = messages
-        .map((m) => `${m.role}: ${m.content}`)
-        .join('\n\n');
+      const conversationHistory = JSON.stringify(messages);
 
       const response = await this.callChatCompletion([
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: `${systemPrompt}\n\n${CONTEXT_RULES}` },
         { role: 'user', content: conversationHistory },
       ]);
 
